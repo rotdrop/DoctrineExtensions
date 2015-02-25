@@ -1,28 +1,23 @@
 <?php
 
-namespace Translatable\Fixture;
+namespace Sortable\Fixture\Document;
 
+use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
 use Gedmo\Mapping\Annotation as Gedmo;
-use Doctrine\ORM\Mapping as ORM;
 
 /**
- * @ORM\Entity
- * @Gedmo\TranslationEntity(class="PersonTranslation")
+ * @ODM\Document(collection="categories")
  */
-class Person
+class Category
 {
-    /**
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
-     */
+    /** @ODM\Id */
     private $id;
 
     /**
-     * @Gedmo\Translatable
-     * @ORM\Column(name="name", type="string", length=128)
+     * @ODM\String
      */
     private $name;
+
 
     public function getId()
     {

@@ -16,9 +16,6 @@ Features:
 - Can be nested with other extensions
 - Annotation, Yaml and Xml mapping support for extensions
 
-[blog_reference]: http://gediminasm.org/article/tree-nestedset-behavior-extension-for-doctrine-2 "Tree - Nestedset or Closure extension for Doctrine 2 makes tree implementation on entities"
-[blog_test]: http://gediminasm.org/test "Test extensions on this blog"
-
 Thanks for contributions to:
 
 - **[comfortablynumb](http://github.com/comfortablynumb) Gustavo Falco** for Closure and Materialized Path strategy
@@ -58,7 +55,6 @@ Update **2011-02-02**
 
 **Note:**
 
-- You can [test live][blog_test] on this blog
 - After using a NestedTreeRepository functions: **verify, recover, removeFromTree** it is recommended to clear EntityManager cache
 because nodes may have changed values in database but not in memory. Flushing dirty nodes can lead to unexpected behaviour.
 - Closure tree implementation is experimental and not fully functional, so far not documented either
@@ -630,7 +626,7 @@ $controller = $this;
 
 ### Nesting Translatatable and Sluggable extensions
 
-If you want to attach **TranslationListener** also add it to EventManager after
+If you want to attach **TranslatableListener** also add it to EventManager after
 the **SluggableListener** and **TreeListener**. It is important because slug must be generated first
 before the creation of it`s translation.
 
@@ -641,7 +637,7 @@ $treeListener = new \Gedmo\Tree\TreeListener();
 $evm->addEventSubscriber($treeListener);
 $sluggableListener = new \Gedmo\Sluggable\SluggableListener();
 $evm->addEventSubscriber($sluggableListener);
-$translatableListener = new \Gedmo\Translatable\TranslationListener();
+$translatableListener = new \Gedmo\Translatable\TranslatableListener();
 $translatableListener->setTranslatableLocale('en_us');
 $evm->addEventSubscriber($translatableListener);
 // now this event manager should be passed to entity manager constructor

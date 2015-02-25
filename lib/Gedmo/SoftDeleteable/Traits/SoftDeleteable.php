@@ -2,19 +2,16 @@
 
 namespace Gedmo\SoftDeleteable\Traits;
 
-use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
-
 /**
  * SoftDeletable Trait, usable with PHP >= 5.4
  *
  * @author Wesley van Opdorp <wesley.van.opdorp@freshheads.com>
  * @license MIT License (http://www.opensource.org/licenses/mit-license.php)
  */
-trait SoftDeleteableDocument
+trait SoftDeleteable
 {
     /**
      * @var \DateTime
-     * @ODM\Date
      */
     protected $deletedAt;
 
@@ -22,7 +19,7 @@ trait SoftDeleteableDocument
      * Sets deletedAt.
      *
      * @param \Datetime|null $deletedAt
-     *
+     * 
      * @return $this
      */
     public function setDeletedAt(\DateTime $deletedAt = null)
@@ -41,10 +38,10 @@ trait SoftDeleteableDocument
     {
         return $this->deletedAt;
     }
-
+    
     /**
      * Is deleted?
-     *
+     * 
      * @return bool
      */
     public function isDeleted()

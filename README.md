@@ -1,12 +1,21 @@
 # Doctrine2 behavioral extensions
 
-**Version 2.3.9**
+**Version 2.3.11**
 
 [![Build Status](https://secure.travis-ci.org/Atlantic18/DoctrineExtensions.png?branch=master)](http://travis-ci.org/Atlantic18/DoctrineExtensions)
 
 **Note:** Extensions **2.3.x** are compatible with ORM and doctrine common library versions from **2.2.x** to **2.4.x**
 
 ### Latest updates
+
+**2015-01-28**
+
+Fixed the issue for all mappings, which caused related class mapping failures, when a relation or class name
+was in the same namespace, but extensions required it to be mapped as full classname.
+
+**2015-01-21**
+
+Fixed memory leak issue with entity or document wrappers for convenient metadata retrieval.
 
 **2014-03-20**
 
@@ -85,19 +94,15 @@ List of extensions which support ODM
 All these extensions can be nested together and mapped in traditional ways - annotations,
 xml or yaml
 
-You can test these extensions on [my blog](http://gediminasm.org/demo "Test doctrine behavioral extensions").
-All tutorials for basic usage examples are on [my blog](http://gediminasm.org "Tutorials for extensions") too.
-You can also fork or clone this blog from [github repository](https://github.com/l3pp4rd/gediminasm.org)
-
 ### Running the tests:
 
-PHPUnit 3.6 or newer is required.
+PHPUnit 3.6 or newer is required. **pdo-sqlite** extension is necessary.
 To setup and run tests follow these steps:
 
 - go to the root directory of extensions
 - download composer: `wget https://getcomposer.org/composer.phar`
 - install dev libraries: `php composer.phar install`
-- run: `phpunit -c tests`
+- run: `bin/phpunit -c tests`
 - optional - run mongodb service if targeting mongo tests
 
 ### Running the example:
