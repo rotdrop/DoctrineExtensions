@@ -29,12 +29,7 @@ class Yaml extends File implements Driver
      */
     public function readExtendedMetadata($meta, array &$config)
     {
-        $mapping = array();
-        $parents = array_reverse($meta->parentClasses);
-        foreach ($parents as $parent) {
-            $mapping = array_merge_recursive($mapping, $this->_getMapping($parent));
-        }
-        $mapping = array_merge_recursive($mapping, $this->_getMapping($meta->name));
+        $mapping = $this->_getMapping($meta->name);
 
         if (isset($mapping['gedmo'])) {
             $classMapping = $mapping['gedmo'];
