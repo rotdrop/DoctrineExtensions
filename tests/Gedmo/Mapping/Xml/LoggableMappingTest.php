@@ -31,6 +31,9 @@ use Gedmo\Tests\Tool\BaseTestCaseOM;
  */
 final class LoggableMappingTest extends BaseTestCaseOM
 {
+    const COMPOSITE = 'Mapping\\Fixture\\Xml\\LoggableComposite';
+    const COMPOSITE_RELATION = 'Mapping\\Fixture\\Xml\\LoggableCompositeRelation';
+
     /**
      * @var \Doctrine\ORM\EntityManager
      */
@@ -81,6 +84,36 @@ final class LoggableMappingTest extends BaseTestCaseOM
         static::assertCount(2, $config['versioned']);
         static::assertContains('title', $config['versioned']);
         static::assertContains('status', $config['versioned']);
+    }
+
+    public function testLoggableCompositeMetadata(): void
+    {
+        $meta = $this->em->getClassMetadata(self::COMPOSITE);
+        $config = $this->loggable->getConfiguration($this->em, $meta->name);
+
+        $this->assertArrayHasKey('logEntryClass', $config);
+        $this->assertEquals('Gedmo\Loggable\Entity\LogEntry', $config['logEntryClass']);
+        $this->assertArrayHasKey('loggable', $config);
+        $this->assertTrue($config['loggable']);
+
+        $this->assertArrayHasKey('versioned', $config);
+        $this->assertCount(1, $config['versioned']);
+        $this->assertContains('title', $config['versioned']);
+    }
+
+    public function testLoggableCompositeRelationMetadata(): void
+    {
+        $meta = $this->em->getClassMetadata(self::COMPOSITE_RELATION);
+        $config = $this->loggable->getConfiguration($this->em, $meta->name);
+
+        $this->assertArrayHasKey('logEntryClass', $config);
+        $this->assertEquals('Gedmo\Loggable\Entity\LogEntry', $config['logEntryClass']);
+        $this->assertArrayHasKey('loggable', $config);
+        $this->assertTrue($config['loggable']);
+
+        $this->assertArrayHasKey('versioned', $config);
+        $this->assertCount(1, $config['versioned']);
+        $this->assertContains('title', $config['versioned']);
     }
 
     public function testLoggableMetadataWithEmbedded(): void

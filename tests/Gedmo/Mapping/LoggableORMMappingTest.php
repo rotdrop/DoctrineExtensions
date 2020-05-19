@@ -18,6 +18,9 @@ use Gedmo\Loggable\Entity\LogEntry;
 use Gedmo\Loggable\LoggableListener;
 use Gedmo\Mapping\ExtensionMetadataFactory;
 use Gedmo\Tests\Mapping\Fixture\Yaml\Category;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Gedmo\Tests\Mapping\Fixture\LoggableComposite;
+use Gedmo\Tests\Mapping\Fixture\LoggableCompositeRelation;
 
 /**
  * These are mapping tests for tree extension
@@ -27,6 +30,8 @@ use Gedmo\Tests\Mapping\Fixture\Yaml\Category;
 final class LoggableORMMappingTest extends ORMMappingTestCase
 {
     public const YAML_CATEGORY = Category::class;
+    public const COMPOSITE = LoggableComposite::class;
+    public const COMPOSITE_RELATION = LoggableCompositeRelation::class;
 
     /**
      * @var \Doctrine\ORM\EntityManager
@@ -42,6 +47,15 @@ final class LoggableORMMappingTest extends ORMMappingTestCase
         $chainDriverImpl->addDriver(
             new YamlDriver([__DIR__.'/Driver/Yaml']),
             'Gedmo\Tests\Mapping\Fixture\Yaml'
+        );
+        $reader = new \Doctrine\Common\Annotations\AnnotationReader();
+        \Doctrine\Common\Annotations\AnnotationRegistry::registerAutoloadNamespace(
+            'Gedmo\\Mapping\\Annotation',
+            VENDOR_PATH.'/../lib'
+        );
+        $chainDriverImpl->addDriver(
+            new \Doctrine\ORM\Mapping\Driver\AnnotationDriver($reader),
+            'Mapping\Fixture'
         );
         $config->setMetadataDriverImpl($chainDriverImpl);
 
@@ -67,5 +81,33 @@ final class LoggableORMMappingTest extends ORMMappingTestCase
         static::assertTrue($config['loggable']);
         static::assertArrayHasKey('logEntryClass', $config);
         static::assertSame(LogEntry::class, $config['logEntryClass']);
+    }
+
+    public function testLoggableCompositeMapping()
+    {
+        $meta = $this->em->getClassMetadata(self::COMPOSITE);
+
+        $this->assertTrue(is_array($meta->identifier));
+        $this->assertCount(2, $meta->identifier);
+
+        $cacheId = ExtensionMetadataFactory::getCacheId(self::COMPOSITE, 'Gedmo\Loggable');
+        $config = $this->em->getMetadataFactory()->getCacheDriver()->fetch($cacheId);
+
+        $this->assertArrayHasKey('loggable', $config);
+        $this->assertTrue($config['loggable']);
+    }
+
+    public function testLoggableCompositeRelationMapping()
+    {
+        $meta = $this->em->getClassMetadata(self::COMPOSITE_RELATION);
+
+        $this->assertTrue(is_array($meta->identifier));
+        $this->assertCount(2, $meta->identifier);
+
+        $cacheId = ExtensionMetadataFactory::getCacheId(self::COMPOSITE_RELATION, 'Gedmo\Loggable');
+        $config = $this->em->getMetadataFactory()->getCacheDriver()->fetch($cacheId);
+
+        $this->assertArrayHasKey('loggable', $config);
+        $this->assertTrue($config['loggable']);
     }
 }
