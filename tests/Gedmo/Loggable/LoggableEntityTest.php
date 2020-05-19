@@ -19,7 +19,10 @@ use Gedmo\Tests\Loggable\Fixture\Entity\Comment;
 use Gedmo\Tests\Loggable\Fixture\Entity\Geo;
 use Gedmo\Tests\Loggable\Fixture\Entity\GeoLocation;
 use Gedmo\Tests\Loggable\Fixture\Entity\RelatedArticle;
+use Gedmo\Tests\Loggable\Fixture\Entity\Log\Comment as CommentLog;
 use Gedmo\Tests\Tool\BaseTestCaseORM;
+use Gedmo\Tests\Loggable\Fixture\Entity\Composite;
+use Gedmo\Tests\Loggable\Fixture\Entity\CompositeRelation;
 
 /**
  * These are tests for loggable behavior
@@ -31,7 +34,9 @@ abstract class LoggableEntityTest extends BaseTestCaseORM
     public const ARTICLE = Article::class;
     public const COMMENT = Comment::class;
     public const RELATED_ARTICLE = RelatedArticle::class;
-    public const COMMENT_LOG = \Gedmo\Tests\Loggable\Fixture\Entity\Log\Comment::class;
+    public const COMMENT_LOG = CommentLog::class;
+    public const COMPOSITE = Composite::class;
+    public const COMPOSITE_RELATION = CompositeRelation::class;
 
     public function testShouldHandleClonedEntity(): void
     {
@@ -143,6 +148,108 @@ abstract class LoggableEntityTest extends BaseTestCaseORM
         static::assertCount(5, $logEntries[3]->getData());
     }
 
+    public function testComposite()
+    {
+        $logRepo = $this->em->getRepository('Gedmo\Loggable\Entity\LogEntry');
+        $compositeRepo = $this->em->getRepository(self::COMPOSITE);
+        $this->assertCount(0, $logRepo->findAll());
+
+        $cmp0 = new Composite(1, 2);
+        $cmp0->setTitle('Title2');
+
+        $this->em->persist($cmp0);
+        $this->em->flush();
+
+        $cmpId = sprintf('%s %s', 1, 2);
+
+        $log = $logRepo->findOneByObjectId($cmpId);
+
+        $this->assertNotNull($log);
+        $this->assertEquals('create', $log->getAction());
+        $this->assertEquals(get_class($cmp0), $log->getObjectClass());
+        $this->assertEquals('jules', $log->getUsername());
+        $this->assertEquals(1, $log->getVersion());
+        $data = $log->getData();
+        $this->assertCount(1, $data);
+        $this->assertArrayHasKey('title', $data);
+        $this->assertEquals($data['title'], 'Title2');
+
+        // test update
+        $composite = $compositeRepo->findOneByTitle('Title2');
+
+        $composite->setTitle('New');
+        $this->em->persist($composite);
+        $this->em->flush();
+        $this->em->clear();
+
+        $log = $logRepo->findOneBy(['version' => 2, 'objectId' => $cmpId]);
+        $this->assertEquals('update', $log->getAction());
+
+        // test delete
+        $composite = $compositeRepo->findOneByTitle('New');
+        $this->em->remove($composite);
+        $this->em->flush();
+        $this->em->clear();
+
+        $log = $logRepo->findOneBy(['version' => 3, 'objectId' => $cmpId]);
+        $this->assertEquals('remove', $log->getAction());
+        $this->assertNull($log->getData());
+    }
+
+    public function testCompositeRelation()
+    {
+        $logRepo = $this->em->getRepository('Gedmo\Loggable\Entity\LogEntry');
+        $compositeRepo = $this->em->getRepository(self::COMPOSITE_RELATION);
+        $this->assertCount(0, $logRepo->findAll());
+
+        $art0 = new Article();
+        $art0->setTitle('Title0');
+        $art1 = new Article();
+        $art1->setTitle('Title1');
+        $cmp0 = new CompositeRelation($art0, $art1);
+        $cmp0->setTitle('Title2');
+
+        $this->em->persist($art0);
+        $this->em->persist($art1);
+        $this->em->persist($cmp0);
+        $this->em->flush();
+
+        $cmpId = sprintf('%s %s', $art0->getId(), $art1->getId());
+
+        $log = $logRepo->findOneByObjectId($cmpId);
+
+        $this->assertNotNull($log);
+        $this->assertEquals('create', $log->getAction());
+        $this->assertEquals(get_class($cmp0), $log->getObjectClass());
+        $this->assertEquals('jules', $log->getUsername());
+        $this->assertEquals(1, $log->getVersion());
+        $data = $log->getData();
+        $this->assertCount(1, $data);
+        $this->assertArrayHasKey('title', $data);
+        $this->assertEquals($data['title'], 'Title2');
+
+        // test update
+        $composite = $compositeRepo->findOneByTitle('Title2');
+
+        $composite->setTitle('New');
+        $this->em->persist($composite);
+        $this->em->flush();
+        $this->em->clear();
+
+        $log = $logRepo->findOneBy(['version' => 2, 'objectId' => $cmpId]);
+        $this->assertEquals('update', $log->getAction());
+
+        // test delete
+        $composite = $compositeRepo->findOneByTitle('New');
+        $this->em->remove($composite);
+        $this->em->flush();
+        $this->em->clear();
+
+        $log = $logRepo->findOneBy(['version' => 3, 'objectId' => $cmpId]);
+        $this->assertEquals('remove', $log->getAction());
+        $this->assertNull($log->getData());
+    }
+
     protected function getUsedEntityFixtures(): array
     {
         return [
@@ -153,6 +260,8 @@ abstract class LoggableEntityTest extends BaseTestCaseORM
             LogEntry::class,
             Address::class,
             Geo::class,
+            self::COMPOSITE,
+            self::COMPOSITE_RELATION,
         ];
     }
 
