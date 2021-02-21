@@ -263,55 +263,59 @@ class LoggableListener extends MappedEventSubscriber
 
         // Filter embedded documents
         if (isset($meta->isEmbeddedDocument) && $meta->isEmbeddedDocument) {
-            return;
+            return null;
         }
 
-        if ($config = $this->getConfiguration($om, $meta->name)) {
-            $logEntryClass = $this->getLogEntryClass($ea, $meta->name);
-            $logEntryMeta = $om->getClassMetadata($logEntryClass);
-            /** @var \Gedmo\Loggable\Entity\LogEntry $logEntry */
-            $logEntry = $logEntryMeta->newInstance();
-
-            $logEntry->setAction($action);
-            $logEntry->setUsername($this->username);
-            $logEntry->setObjectClass($meta->name);
-            $logEntry->setLoggedAt();
-
-            // check for the availability of the primary key
-            $uow = $om->getUnitOfWork();
-            if (self::ACTION_CREATE === $action && ($ea->isPostInsertGenerator($meta) || ($meta instanceof \Doctrine\ORM\Mapping\ClassMetadata && $meta->isIdentifierComposite))) {
-                $this->pendingLogEntryInserts[spl_object_hash($object)] = $logEntry;
-            } else {
-                $logEntry->setObjectId($wrapped->getIdentifier(false, true));
-            }
-            $newValues = [];
-            if (self::ACTION_REMOVE !== $action && isset($config['versioned'])) {
-                $newValues = $this->getObjectChangeSetData($ea, $object, $logEntry);
-                $logEntry->setData($newValues);
-            }
-
-            if (self::ACTION_UPDATE === $action && 0 === count($newValues)) {
-                return null;
-            }
-
-            $version = 1;
-            if (self::ACTION_CREATE !== $action) {
-                $version = $ea->getNewVersion($logEntryMeta, $object);
-                if (empty($version)) {
-                    // was versioned later
-                    $version = 1;
-                }
-            }
-            $logEntry->setVersion($version);
-
-            $this->prePersistLogEntry($logEntry, $object);
-
-            $om->persist($logEntry);
-            $uow->computeChangeSet($logEntryMeta, $logEntry);
-
-            return $logEntry;
+        if (!($config = $this->getConfiguration($om, $meta->name))) {
+            return null;
         }
 
-        return null;
+        if (empty($config['loggable'])) {
+            return null;
+        }
+
+        $logEntryClass = $this->getLogEntryClass($ea, $meta->name);
+        $logEntryMeta = $om->getClassMetadata($logEntryClass);
+        /** @var \Gedmo\Loggable\Entity\LogEntry $logEntry */
+        $logEntry = $logEntryMeta->newInstance();
+
+        $logEntry->setAction($action);
+        $logEntry->setUsername($this->username);
+        $logEntry->setObjectClass($meta->name);
+        $logEntry->setLoggedAt();
+
+        // check for the availability of the primary key
+        $uow = $om->getUnitOfWork();
+        if (self::ACTION_CREATE === $action && ($ea->isPostInsertGenerator($meta) || ($meta instanceof \Doctrine\ORM\Mapping\ClassMetadata && $meta->isIdentifierComposite))) {
+            $this->pendingLogEntryInserts[spl_object_hash($object)] = $logEntry;
+        } else {
+            $logEntry->setObjectId($wrapped->getIdentifier(false, true));
+        }
+        $newValues = [];
+        if (self::ACTION_REMOVE !== $action && isset($config['versioned'])) {
+            $newValues = $this->getObjectChangeSetData($ea, $object, $logEntry);
+            $logEntry->setData($newValues);
+        }
+
+        if (self::ACTION_UPDATE === $action && 0 === count($newValues)) {
+            return null;
+        }
+
+        $version = 1;
+        if (self::ACTION_CREATE !== $action) {
+            $version = $ea->getNewVersion($logEntryMeta, $object);
+            if (empty($version)) {
+                // was versioned later
+                $version = 1;
+            }
+        }
+        $logEntry->setVersion($version);
+
+        $this->prePersistLogEntry($logEntry, $object);
+
+        $om->persist($logEntry);
+        $uow->computeChangeSet($logEntryMeta, $logEntry);
+
+        return $logEntry;
     }
 }

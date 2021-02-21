@@ -15,6 +15,9 @@ use Doctrine\Common\Annotations\Annotation;
  */
 final class Loggable extends Annotation
 {
+    /** @var bool */
+    public $enabled = true;
+
     /** @var string */
     public $logEntryClass;
 }
