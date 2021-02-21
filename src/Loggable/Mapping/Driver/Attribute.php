@@ -57,7 +57,7 @@ class Attribute extends AbstractAnnotationDriver
         if ($annot = $this->reader->getClassAnnotation($class, self::LOGGABLE)) {
             \assert($annot instanceof Loggable);
 
-            $config['loggable'] = true;
+            $config['loggable'] = $annot->enabled;
 
             if ($annot->logEntryClass) {
                 if (!$cl = $this->getRelatedClassName($meta, $annot->logEntryClass)) {
