@@ -62,24 +62,27 @@ class Annotation extends AbstractAnnotationDriver
                 if (!$this->isValidField($meta, $field)) {
                     throw new InvalidMappingException("Field - [{$field}] type is not valid and must be 'date', 'datetime' or 'time' in class - {$meta->name}");
                 }
-                if (!in_array($timestampable->on, ['update', 'create', 'change'])) {
-                    throw new InvalidMappingException("Field - [{$field}] trigger 'on' is not one of [update, create, change] in class - {$meta->name}");
-                }
-                if ('change' == $timestampable->on) {
-                    if (!isset($timestampable->field)) {
-                        throw new InvalidMappingException("Missing parameters on property - {$field}, field must be set on [change] trigger in class - {$meta->name}");
+                $triggers = is_array($timestampable->on) ? $timestampable->on : [ $timestampable->on ];
+                foreach ($triggers as $on) {
+                    if (!in_array($on, ['update', 'create', 'change'])) {
+                        throw new InvalidMappingException("Field - [{$field}] trigger 'on' is not one of [update, create, change] in class - {$meta->name}");
                     }
-                    if (is_array($timestampable->field) && isset($timestampable->value)) {
-                        throw new InvalidMappingException('Timestampable extension does not support multiple value changeset detection yet.');
+                    if ('change' == $timestampable->on) {
+                        if (!isset($timestampable->field)) {
+                            throw new InvalidMappingException("Missing parameters on property - {$field}, field must be set on [change] trigger in class - {$meta->name}");
+                        }
+                        if (is_array($timestampable->field) && isset($timestampable->value)) {
+                            throw new InvalidMappingException('Timestampable extension does not support multiple value changeset detection yet.');
                     }
-                    $field = [
-                        'field' => $field,
-                        'trackedField' => $timestampable->field,
-                        'value' => $timestampable->value,
-                    ];
+                        $field = [
+                            'field' => $field,
+                            'trackedField' => $timestampable->field,
+                            'value' => $timestampable->value,
+                        ];
+                    }
+                    // properties are unique and mapper checks that, no risk here
+                    $config[$on][] = $field;
                 }
-                // properties are unique and mapper checks that, no risk here
-                $config[$timestampable->on][] = $field;
             }
         }
     }
