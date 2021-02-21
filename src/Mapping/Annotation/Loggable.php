@@ -40,11 +40,20 @@ final class Loggable implements GedmoAnnotation
     public $logEntryClass;
 
     /**
+     * @var bool
+     *
+     * @phpstan-var class-bool
+     */
+    public $enabled = true;
+
+    /**
      * @param array<string, mixed> $data
      *
      * @phpstan-param class-string<T>|null $logEntryClass
+     *
+     * @phpstan-param class-bool $enabled
      */
-    public function __construct(array $data = [], ?string $logEntryClass = null)
+    public function __construct(array $data = [], ?string $logEntryClass = null, bool $enabled = true)
     {
         if ([] !== $data) {
             Deprecation::trigger(
@@ -57,10 +66,12 @@ final class Loggable implements GedmoAnnotation
             $args = func_get_args();
 
             $this->logEntryClass = $this->getAttributeValue($data, 'logEntryClass', $args, 1, $logEntryClass);
+            $this->enabled = $this->getAttributeValue($data, 'enabled', $args, 2, $enabled);
 
             return;
         }
 
         $this->logEntryClass = $logEntryClass;
+        $this->enabled = $enabled;
     }
 }
