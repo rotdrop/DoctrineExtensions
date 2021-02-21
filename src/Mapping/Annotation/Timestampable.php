@@ -25,7 +25,7 @@ use Gedmo\Mapping\Annotation\Annotation as GedmoAnnotation;
 #[Attribute(Attribute::TARGET_PROPERTY)]
 final class Timestampable implements GedmoAnnotation
 {
-    /** @var string */
+    /** @var string|array */
     public $on = 'update';
     /** @var string|string[] */
     public $field;
