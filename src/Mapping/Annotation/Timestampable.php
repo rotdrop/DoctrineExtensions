@@ -27,7 +27,7 @@ final class Timestampable implements GedmoAnnotation
 {
     use ForwardCompatibilityTrait;
 
-    /** @var string */
+    /** @var string|string[] */
     public $on = 'update';
     /** @var string|string[] */
     public $field;
@@ -38,7 +38,7 @@ final class Timestampable implements GedmoAnnotation
      * @param string|string[] $field
      * @param mixed           $value
      */
-    public function __construct(array $data = [], string $on = 'update', $field = null, $value = null)
+    public function __construct(array $data = [], $on = 'update', $field = null, $value = null)
     {
         if ([] !== $data) {
             @trigger_error(sprintf(
