@@ -324,7 +324,7 @@ class LoggableListener extends MappedEventSubscriber
             return null;
         }
 
-        if ($config = $this->getConfiguration($om, $meta->getName())) {
+        if (($config = $this->getConfiguration($om, $meta->getName())) && $config['loggable']) {
             $logEntryClass = $this->getLogEntryClass($ea, $meta->getName());
             $logEntryMeta = $om->getClassMetadata($logEntryClass);
             /** @var LogEntryInterface<T> $logEntry */
