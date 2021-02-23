@@ -24,7 +24,8 @@ final class ORM extends BaseAdapterORM implements TimestampableAdapter
             return time();
         }
         if (isset($mapping['type']) && in_array($mapping['type'], ['date_immutable', 'time_immutable', 'datetime_immutable', 'datetimetz_immutable'], true)) {
-            return new \DateTimeImmutable();
+            return \DateTimeImmutable::createFromFormat('U.u', number_format(microtime(true), 6, '.', ''))
+                ->setTimeZone(new \DateTimeZone(date_default_timezone_get()));
         }
 
         return \DateTime::createFromFormat('U.u', number_format(microtime(true), 6, '.', ''))
