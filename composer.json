@@ -92,7 +92,8 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "3.9-dev"
+            "dev-main": "3.9-dev",
+            "dev-production/orm-2.11.x/cafevdb": "3.9-dev"
         }
     },
     "scripts": {
