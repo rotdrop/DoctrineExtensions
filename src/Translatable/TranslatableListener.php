@@ -524,18 +524,25 @@ class TranslatableListener extends MappedEventSubscriber
                     }
                 }
 
+                $doFallback = ((!isset($config['fallback'][$field]) && $this->translationFallback)
+                               ||
+                               (isset($config['fallback'][$field]) && $config['fallback'][$field]));
+
+                $originalValue = null;
+                if ($translated === $this->defaultTranslationValue && $doFallback) {
+                    $originalValue = $meta->getReflectionProperty($field)->getValue($object);
+                    $translated = $this->getFallbackTranslation($originalValue);
+                }
+
                 // update translation
-                if ($this->defaultTranslationValue !== $translated
-                    || (!$this->translationFallback && (!isset($config['fallback'][$field]) || !$config['fallback'][$field]))
-                    || ($this->translationFallback && isset($config['fallback'][$field]) && !$config['fallback'][$field])
-                ) {
+                if ($translated !== $this->defaultTranslationValue || !$doFallback) {
                     $ea->setTranslationValue($object, $field, $translated);
                     // ensure clean changeset
                     $ea->setOriginalObjectProperty(
                         $om->getUnitOfWork(),
                         $object,
                         $field,
-                        $meta->getReflectionProperty($field)->getValue($object)
+                        $originalValue?:$meta->getReflectionProperty($field)->getValue($object)
                     );
                 }
             }
@@ -578,6 +585,19 @@ class TranslatableListener extends MappedEventSubscriber
     public function hasTranslationsInDefaultLocale($oid)
     {
         return array_key_exists($oid, $this->translationInDefaultLocale);
+    }
+
+    /**
+     * Get a fallback tanslation. This function is only called if a
+     * fallback is enabled for the respective field. If null is
+     * returned then the original field value will be used as
+     * fallback. If a non-empty string is returned, then this string
+     * will be used as fallback translation (but it will not be
+     * persisted).
+     */
+    protected function getFallbackTranslation($originalValue)
+    {
+        return $this->defaultTranslationValue;
     }
 
     protected function getNamespace()
