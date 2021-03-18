@@ -467,22 +467,43 @@ class TranslatableListener extends MappedEventSubscriber
                         break;
                     }
                 }
+
+                $doFallback = ((!isset($config['fallback'][$field]) && $this->translationFallback)
+                               ||
+                               (isset($config['fallback'][$field]) && $config['fallback'][$field]));
+
+                $originalValue = null;
+                if ($translated === null && $doFallback) {
+                    $originalValue = $meta->getReflectionProperty($field)->getValue($object);
+                    $translated = $this->getFallbackTranslation($originalValue);
+                }
+
                 // update translation
-                if ($translated !== null
-                    || (!$this->translationFallback && (!isset($config['fallback'][$field]) || !$config['fallback'][$field]))
-                    || ($this->translationFallback && isset($config['fallback'][$field]) && !$config['fallback'][$field])
-                ) {
+                if ($translated !== null || !$doFallback) {
                     $ea->setTranslationValue($object, $field, $translated);
                     // ensure clean changeset
                     $ea->setOriginalObjectProperty(
                         $om->getUnitOfWork(),
                         $oid,
                         $field,
-                        $meta->getReflectionProperty($field)->getValue($object)
+                        $originalValue?:$meta->getReflectionProperty($field)->getValue($object)
                     );
                 }
             }
         }
+    }
+
+    /**
+     * Get a fallback tanslation. This function is only called if a
+     * fallback is enabled for the respective field. If null is
+     * returned then the original field value will be used as
+     * fallback. If a non-empty string is returned, then this string
+     * will be used as fallback translation (but it will not be
+     * persisted).
+     */
+    protected function getFallbackTranslation($originalValue)
+    {
+        return null;
     }
 
     /**
