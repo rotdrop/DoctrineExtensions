@@ -495,13 +495,41 @@ class TranslatableListener extends MappedEventSubscriber
 
     /**
      * Get a fallback tanslation. This function is only called if a
-     * fallback is enabled for the respective field. If null is
-     * returned then the original field value will be used as
-     * fallback. If a non-empty string is returned, then this string
-     * will be used as fallback translation (but it will not be
-     * persisted).
+     * fallback is enabled for the respective field and the field has
+     * no translation in the database. If null is returned then the
+     * original field value will be used as fallback. If a non-empty
+     * string is returned, then this string will be used as fallback
+     * translation. The fallback translations will be stored in the
+     * data-base on flush.
+     *
+     * @param string $originalValue Stored value from untranslated
+     *   entity property.
+     *
+     * @return null|string The translated value in the current locale.
+     *
+     * @note Applications can derive from TranslatableListener and
+     * override this method to their liking.
      */
     protected function getFallbackTranslation($originalValue)
+    {
+        return null;
+    }
+
+    /**
+     * Provide the reverse translation to the fallback locale. Used
+     * for newly persisted entities without translation to the default
+     * locale. If null is returned just the original (wrong) value of
+     * the current locale is persistet.
+     *
+     * @param string $translatedValue Translated value in the current
+     * locale.
+     *
+     * @return null|string The back-translated value or null.
+     *
+     * @note Applications can derive from TranslatableListener and
+     * override this method to their liking.
+     */
+    protected function getFallbackUntranslation($translatedValue)
     {
         return null;
     }
@@ -658,13 +686,21 @@ class TranslatableListener extends MappedEventSubscriber
                 }
             }
 
-            if ($isInsert && null !== $this->getTranslationInDefaultLocale($oid, $field)) {
+            if ($isInsert) {
                 // We can't rely on object field value which is created in non-default locale.
                 // If we provide translation for default locale as well, the latter is considered to be trusted
                 // and object content should be overridden.
-                $wrapped->setPropertyValue($field, $this->getTranslationInDefaultLocale($oid, $field)->getContent());
-                $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
-                $this->removeTranslationInDefaultLocale($oid, $field);
+                $defaultValue = null;
+                if (null !== $this->getTranslationInDefaultLocale($oid, $field)) {
+                    $defaultValue = $this->getTranslationInDefaultLocale($oid, $field)->getContent();
+                    $this->removeTranslationInDefaultLocale($oid, $field);
+                } else {
+                    $defaultValue = $this->getFallbackUntranslation($wrapped->getPropertyValue($field));
+                }
+                if ($defaultValue !== null) {
+                    $wrapped->setPropertyValue($field, $defaultValue);
+                    $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
+                }
             }
         }
         $this->translatedInLocale[$oid] = $locale;
