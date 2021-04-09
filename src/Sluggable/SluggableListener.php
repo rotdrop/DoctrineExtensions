@@ -73,6 +73,8 @@ use function Symfony\Component\String\u;
  */
 class SluggableListener extends MappedEventSubscriber
 {
+    const PLACEHOLDER_SLUG = '__sluggable_placeholder__';
+
     /**
      * The power exponent to jump
      * the slug unique number by tens.
@@ -279,7 +281,7 @@ class SluggableListener extends MappedEventSubscriber
         if ($config = $this->getConfiguration($om, $meta->getName())) {
             foreach ($config['slugs'] as $slugField => $options) {
                 if ($meta->isIdentifier($slugField)) {
-                    $meta->setFieldValue($object, $slugField, uniqid('__sluggable_placeholder__'));
+                    $meta->setFieldValue($object, $slugField, uniqid(self::PLACEHOLDER_SLUG));
                 }
             }
         }
@@ -364,7 +366,7 @@ class SluggableListener extends MappedEventSubscriber
             $slug = $meta->getFieldValue($object, $slugField);
 
             // if slug should not be updated, skip it
-            if (!$options['updatable'] && !$isInsert && (!isset($changeSet[$slugField]) || 0 === strpos($slug, '__sluggable_placeholder__'))) {
+            if (!$options['updatable'] && !$isInsert && (!isset($changeSet[$slugField]) || 0 === strpos($slug, self::PLACEHOLDER_SLUG))) {
                 continue;
             }
             // must fetch the old slug from changeset, since $object holds the new version
@@ -372,7 +374,7 @@ class SluggableListener extends MappedEventSubscriber
             $needToChangeSlug = false;
 
             // if slug is null, regenerate it, or needs an update
-            if (null === $slug || 0 === strpos($slug, '__sluggable_placeholder__') || !isset($changeSet[$slugField])) {
+            if (null === $slug || 0 === strpos($slug, self::PLACEHOLDER_SLUG === $slug) || !isset($changeSet[$slugField])) {
                 $slug = [];
 
                 foreach ($options['fields'] as $sluggableField) {
