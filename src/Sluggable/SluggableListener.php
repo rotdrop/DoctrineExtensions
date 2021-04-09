@@ -374,18 +374,16 @@ class SluggableListener extends MappedEventSubscriber
 
             // if slug is null, regenerate it, or needs an update
             if (null === $slug || 0 === strpos($slug, '__sluggable_placeholder__') || !isset($changeSet[$slugField])) {
-                $slug = '';
+                $slug = [];
 
                 foreach ($options['fields'] as $sluggableField) {
                     if (isset($changeSet[$sluggableField]) || isset($changeSet[$slugField])) {
                         $needToChangeSlug = true;
                     }
                     $value = $meta->getFieldValue($object, $sluggableField);
-                    $slug .= $value instanceof \DateTimeInterface ? $value->format($options['dateFormat']) : $value;
-                    $slug .= ' ';
+                    $slug[] = $value instanceof \DateTimeInterface ? $value->format($options['dateFormat']) : $value;
                 }
-                // trim generated slug as it will have unnecessary trailing space
-                $slug = trim($slug);
+                $slug = implode($options['separator'], $slug);
             } else {
                 // slug was set manually
                 $needToChangeSlug = true;
