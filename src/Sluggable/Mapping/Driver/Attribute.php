@@ -52,6 +52,7 @@ class Attribute extends AbstractAnnotationDriver
     protected $validTypes = [
         'string',
         'text',
+        'blob',
         'integer',
         'int',
         'date',
