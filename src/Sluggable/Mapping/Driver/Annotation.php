@@ -52,6 +52,7 @@ class Annotation extends AbstractAnnotationDriver
     protected $validTypes = [
         'string',
         'text',
+        'blob',
         'integer',
         'int',
         'date',
