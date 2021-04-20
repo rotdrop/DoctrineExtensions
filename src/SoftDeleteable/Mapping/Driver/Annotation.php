@@ -9,6 +9,7 @@
 
 namespace Gedmo\SoftDeleteable\Mapping\Driver;
 
+use Doctrine\Persistence\Mapping\ClassMetadata;
 use Gedmo\Exception\InvalidMappingException;
 use Gedmo\Mapping\Annotation\SoftDeleteable;
 use Gedmo\Mapping\Driver\AbstractAnnotationDriver;
@@ -28,9 +29,14 @@ use Gedmo\SoftDeleteable\Mapping\Validator;
 class Annotation extends AbstractAnnotationDriver
 {
     /**
-     * Annotation to define that this object is loggable
+     * Annotation to define that this object is soft-deleteable
      */
     public const SOFT_DELETEABLE = SoftDeleteable::class;
+
+    /**
+     * Annotation to define that soft-deletion cascade over this property
+     */
+    const SOFT_DELETEABLE_CASCADE = 'Gedmo\\Mapping\\Annotation\\SoftDeleteableCascade';
 
     public function readExtendedMetadata($meta, array &$config)
     {
@@ -60,6 +66,39 @@ class Annotation extends AbstractAnnotationDriver
             }
         }
 
+        // property annotations
+        foreach ($class->getProperties() as $property) {
+            $field = $property->getName();
+            if ($meta->isMappedSuperclass && !$property->isPrivate()) {
+                continue;
+            }
+
+            // versioned property
+            if ($annot = $this->reader->getPropertyAnnotation($property, self::SOFT_DELETEABLE_CASCADE)) {
+                if (!$this->isMappingValid($meta, $field)) {
+                    throw new InvalidMappingException("Cannot apply versioning to field [{$field}] as it does not have an association - {$meta->name}");
+                }
+
+                if (!empty($annot->delete)) {
+                    $config['cascadeDelete'][] = $field;
+                }
+                if (!empty($annot->undelete)) {
+                    $config['cascadeUndelete'][] = $field;
+                }
+            }
+        }
+
         $this->validateFullMetadata($meta, $config);
     }
+
+    /**
+     * @param string $field
+     *
+     * @return bool
+     */
+    protected function isMappingValid(ClassMetadata $meta, $field)
+    {
+        return $meta->hasAssociation($field);
+    }
+
 }
