@@ -30,6 +30,20 @@ class SoftDeleteableListener extends MappedEventSubscriber
     const POST_SOFT_DELETE = 'postSoftDelete';
 
     /**
+     * Pre soft-undelete event
+     *
+     * @var string
+     */
+    const PRE_SOFT_UNDELETE = 'preSoftUndelete';
+
+    /**
+     * Post soft-undelete event
+     *
+     * @var string
+     */
+    const POST_SOFT_UNDELETE = 'postSoftUndelete';
+
+    /**
      * {@inheritdoc}
      */
     public function getSubscribedEvents()
@@ -87,6 +101,44 @@ class SoftDeleteableListener extends MappedEventSubscriber
 
                 $evm->dispatchEvent(
                     self::POST_SOFT_DELETE,
+                    $ea->createLifecycleEventArgsInstance($object, $om)
+                );
+            }
+        }
+
+        // perhaps track undeletions? Undelete can only happen on update
+        foreach ($ea->getScheduledObjectUpdates($uow) as $object) {
+            $meta = $om->getClassMetadata(get_class($object));
+            $config = $this->getConfiguration($om, $meta->name);
+
+            if (!isset($config['softDeleteable']) || !$config['softDeleteable']) {
+                continue;
+            }
+
+            $fieldName = $config['fieldName'];
+            $changeSet = $ea->getObjectChangeSet($uow, $object);
+            if (!isset($changeSet[$fieldName])) {
+                continue;
+            }
+
+            $oldValue = $changeSet[$fieldName][0];
+
+            $reflProp = $meta->getReflectionProperty($fieldName);
+            $newValue = $reflProp->getValue($object);
+            if (!empty($oldValue) && empty($newValue)) {
+
+                // fake old date-stamp and call pre-undelete handler
+                $reflProp->setValue($object, $oldValue);
+                $evm->dispatchEvent(
+                    self::PRE_SOFT_UNDELETE,
+                    $ea->createLifecycleEventArgsInstance($object, $om)
+                );
+
+                // restore new value and call post-undlete handler
+                $reflProp->setValue($object, $newValue);
+
+                $evm->dispatchEvent(
+                    self::POST_SOFT_UNDELETE,
                     $ea->createLifecycleEventArgsInstance($object, $om)
                 );
             }
