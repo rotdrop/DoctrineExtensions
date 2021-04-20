@@ -35,7 +35,7 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter, ClockAw
     /**
      * @param ClassMetadata<object> $meta
      */
-    public function getDateValue($meta, $field)
+    public function getDateValue($meta, $field, ?\DateTimeInterface $date = null)
     {
         $mapping = $meta->getFieldMapping($field);
 

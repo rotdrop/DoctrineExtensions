@@ -33,12 +33,28 @@ final class SoftDeleteable implements GedmoAnnotation
 
     public bool $timeAware = false;
 
-    public bool $hardDelete = true;
+    /**
+     * @var bool|string
+     * The "decider" which determines if hard-deletion is allowed.
+     *
+     * - an entity method returning a boolean. If the return value is
+     *   true then hard-deletion is allowed.
+     *
+     * - a class name satisfying the
+     *   \Gedmo\SoftDeleteable\HardDeleteablex\HardDeleteableInterface, in
+     *   particular implementing the hardDeleteAllowed() method.
+     *
+     * - true Use the default validator class
+     *   \Gedmo\SoftDeleteable\HardDeleteable\HardDeleteExpired which
+     *   leads to hard-deletion if the time-stamp of an already
+     *   soft-deleted entity is in the past.
+     */
+    public $hardDelete = true;
 
     /**
      * @param array<string, mixed> $data
      */
-    public function __construct(array $data = [], string $fieldName = 'deletedAt', bool $timeAware = false, bool $hardDelete = true)
+    public function __construct(array $data = [], string $fieldName = 'deletedAt', bool $timeAware = false, $hardDelete = true)
     {
         if ([] !== $data) {
             Deprecation::trigger(
