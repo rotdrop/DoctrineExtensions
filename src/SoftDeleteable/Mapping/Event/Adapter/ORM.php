@@ -26,7 +26,7 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter
     /**
      * @param ClassMetadata $meta
      */
-    public function getDateValue($meta, $field)
+    public function getDateValue($meta, $field, ?\DateTimeInterface $date = null)
     {
         $mapping = $meta->getFieldMapping($field);
         $converter = Type::getType($mapping['type'] ?? Types::DATETIME_MUTABLE);
