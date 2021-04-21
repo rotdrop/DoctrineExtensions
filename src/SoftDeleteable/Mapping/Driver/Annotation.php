@@ -14,6 +14,9 @@ use Gedmo\Exception\InvalidMappingException;
 use Gedmo\Mapping\Annotation\SoftDeleteable;
 use Gedmo\Mapping\Driver\AbstractAnnotationDriver;
 use Gedmo\SoftDeleteable\Mapping\Validator;
+use Gedmo\Mapping\Annotation\SoftDeleteable as SoftDeleteableAnnotation;
+use Gedmo\Mapping\Annotation\SoftDeleteableCascade as SoftDeleteableCascadeAnnotation;
+use Gedmo\SoftDeleteable\HardDeleteable\HardDeleteableInterface;
 
 /**
  * This is an annotation mapping driver for SoftDeleteable
@@ -31,12 +34,17 @@ class Annotation extends AbstractAnnotationDriver
     /**
      * Annotation to define that this object is soft-deleteable
      */
-    public const SOFT_DELETEABLE = SoftDeleteable::class;
+    public const SOFT_DELETEABLE = SoftDeleteableAnnotation::class;
 
     /**
      * Annotation to define that soft-deletion cascade over this property
      */
-    const SOFT_DELETEABLE_CASCADE = 'Gedmo\\Mapping\\Annotation\\SoftDeleteableCascade';
+    const SOFT_DELETEABLE_CASCADE = SoftDeleteableCascadeAnnotation::class;
+
+    /**
+     * Hard-delete decision interface_exists
+     */
+    const HARD_DELETEABLE_INTERFACE = HardDeleteableInterface::class;
 
     public function readExtendedMetadata($meta, array &$config)
     {
@@ -59,8 +67,11 @@ class Annotation extends AbstractAnnotationDriver
 
             $config['hardDelete'] = true;
             if (isset($annot->hardDelete)) {
-                if (!is_bool($annot->hardDelete)) {
-                    throw new InvalidMappingException('hardDelete must be boolean. '.gettype($annot->hardDelete).' provided.');
+                if (!is_bool($annot->hardDelete)
+                    && (!is_string($annot->hardDelete)
+                        || !class_exists($annot->hardDelete)
+                        || !is_subclass_of($annot->hardDelete, self::HARD_DELETEABLE_INTERFACE))) {
+                    throw new InvalidMappingException('hardDelete must be boolean or the name of an exististing PHP class implementing '.self::HARD_DELETEABLE_INTERFACE);
                 }
                 $config['hardDelete'] = $annot->hardDelete;
             }

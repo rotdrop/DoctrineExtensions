@@ -24,7 +24,7 @@ final class ODM extends BaseAdapterODM implements SoftDeleteableAdapter
     /**
      * @param ClassMetadata $meta
      */
-    public function getDateValue($meta, $field)
+    public function getDateValue($meta, $field, ?\DateTimeInterface $date = null)
     {
         $datetime = new \DateTime();
         $mapping = $meta->getFieldMapping($field);
