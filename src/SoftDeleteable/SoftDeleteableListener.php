@@ -5,6 +5,7 @@ namespace Gedmo\SoftDeleteable;
 use Doctrine\Common\EventArgs;
 use Doctrine\ODM\MongoDB\UnitOfWork as MongoDBUnitOfWork;
 use Gedmo\Mapping\MappedEventSubscriber;
+use Gedmo\SoftDeleteable\HardDeleteable\HardDeleteExpired;
 
 /**
  * SoftDeleteable listener
@@ -15,6 +16,8 @@ use Gedmo\Mapping\MappedEventSubscriber;
  */
 class SoftDeleteableListener extends MappedEventSubscriber
 {
+    static protected $defaultHardDeleteableValidator = HardDeleteExpired::class;
+
     /**
      * Pre soft-delete event
      *
@@ -66,18 +69,106 @@ class SoftDeleteableListener extends MappedEventSubscriber
         $om = $ea->getObjectManager();
         $uow = $om->getUnitOfWork();
 
+        // one time stamp for all deletions and undeletions
+        $flushTime = new \DateTimeImmutable;
+
         //getScheduledDocumentDeletions
         foreach ($ea->getScheduledObjectDeletions($uow) as $object) {
-            $this->softDelete($ea, object);
+            $this->softDelete($ea, $object, $flushTime);
         }
 
         // perhaps track undeletions? Undelete can only happen on update
         foreach ($ea->getScheduledObjectUpdates($uow) as $object) {
-            $this->softUndelete($ea, $object, null);
+            $this->handleUndelete($ea, $object, $flushTime);
         }
     }
 
-    protected function handleUndelete($ea, $object, $undeleteStart = null)
+    protected function softDelete($ea, $object, \DateTimeImmutable $flushTime, $cascadeLevel = 0)
+    {
+        $om = $ea->getObjectManager();
+        $uow = $om->getUnitOfWork();
+        $evm = $om->getEventManager();
+
+        $meta = $om->getClassMetadata(get_class($object));
+        $config = $this->getConfiguration($om, $meta->name);
+
+        if (empty($config['softDeleteable'])) {
+            return;
+        }
+
+        $fieldName = $config['fieldName'];
+        $reflProp = $meta->getReflectionProperty($fieldName);
+        $oldValue = $reflProp->getValue($object);
+
+        if ($cascadeLevel > 0 && !empty($oldValue)) {
+            // don't cascade soft-delete to already soft-deleted entities
+            return;
+        }
+
+        foreach ($config['cascadeDelete'] as $cascadeField) {
+            $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
+            if ($meta->isCollectionValuedAssociation($cascadeField)) {
+                $collection = $association;
+            } else {
+                $collection = [ $association ];
+            }
+            foreach ($collection as $softDeleteable) {
+                $this->softDelete($ea, $softDeleteable, $flushTime, $cascadeLevel + 1);
+            }
+        }
+
+        if (!$uow->isScheduledForDelete($object)) {
+            $uow->remove($object);
+        }
+
+        if (!empty($config['hardDelete'])) {
+            // give way to hard-deletion if appropriate
+            $evaluator = $config['hardDelete'] === true
+                       ? self::$defaultHardDeleteableValidator
+                       : $config['hardDelete'];
+            $hardDelete = false;
+            if (method_exists($object, $evaluator) && $object->$evaluator()) {
+                $hardDelete = true;
+            } else if (!empty($evaluator)) {
+                $evaluator = new $evaluator($ea);
+                $hardDelete = $evaluator->hardDeleteAllowed($object, $config);
+            }
+            if ($hardDelete) {
+                return;
+            }
+        }
+
+        $evm->dispatchEvent(
+            self::PRE_SOFT_DELETE,
+            $ea->createLifecycleEventArgsInstance($object, $om)
+        );
+
+        $date = $ea->getDateValue($meta, $fieldName, $flushTime);
+        $reflProp->setValue($object, $date);
+
+        $om->persist($object); // undo delete
+
+        $uow->propertyChanged($object, $fieldName, $oldValue, $date);
+        if ($uow instanceof MongoDBUnitOfWork && !method_exists($uow, 'scheduleExtraUpdate')) {
+            $ea->recomputeSingleObjectChangeSet($uow, $meta, $object);
+        } else {
+            $uow->scheduleExtraUpdate($object, [
+                $fieldName=> [$oldValue, $date],
+            ]);
+        }
+
+        $evm->dispatchEvent(
+            self::POST_SOFT_DELETE,
+            $ea->createLifecycleEventArgsInstance($object, $om)
+        );
+    }
+
+    protected function handleUndelete(
+        $ea,
+        $object,
+        \DateTimeImmutable $flushTime,
+        ?\DateTimeImmutable $undeleteStart = null,
+        $cascadeLevel = 0)
     {
         $om = $ea->getObjectManager();
         $uow = $om->getUnitOfWork();
@@ -85,7 +176,7 @@ class SoftDeleteableListener extends MappedEventSubscriber
         $meta = $om->getClassMetadata(get_class($object));
         $config = $this->getConfiguration($om, $meta->name);
 
-        if (!isset($config['softDeleteable']) || !$config['softDeleteable']) {
+        if (empty($config['softDeleteable'])) {
             return;
         }
 
@@ -94,8 +185,10 @@ class SoftDeleteableListener extends MappedEventSubscriber
         $reflProp = $meta->getReflectionProperty($fieldName);
         $currentValue = $reflProp->getValue($object);
 
-        if (!empty($undeleteStart) && !empty($currentValue)
-            && $currentValue > $undeleteStart) {
+        if ($cascadeLevel > 0 && !empty($currentValue)
+            && $currentValue >= $ea->getDateValue($meta, $fieldName, $undeleteStart)
+            && $currentValue < $ea->getDateValue($meta, $fieldName, $flushTime)) {
+
             // cascade undelete if soft-deletion was later than $undeleteStart
             $reflProp->setValue($object, null);
             $uow->propertyChanged($object, $fieldName, $currentValue, null);
@@ -113,6 +206,7 @@ class SoftDeleteableListener extends MappedEventSubscriber
         if (!isset($changeSet[$fieldName])) {
             return;
         }
+
         $oldValue = $changeSet[$fieldName][0];
 
         if (!empty($oldValue) && empty($currentValue)) {
@@ -124,15 +218,26 @@ class SoftDeleteableListener extends MappedEventSubscriber
                 $ea->createLifecycleEventArgsInstance($object, $om)
             );
 
-            foreach ($config['cascadeDelete'] as $cascadeField) {
-                $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
-                if ($meta->isCollectionValuedAssociation($cascadeField)) {
-                    $collection = $association;
-                } else {
-                    $collection = [ $association ];
+            if (!empty($config['cascadeUndelete'])) {
+
+                if ($cascadeLevel == 0) {
+                    if (!($oldValue instanceof \DateTimeInterface)) {
+                        $undeleteStart = (new \DateTimeImmutable)->setTimestamp($oldValue);
+                    } else {
+                        $undeleteStart = \DateTimeImmutable::createFromFormat('U.u', $oldValue->format('U.u'));
+                    }
                 }
-                foreach ($collection as $softDeleteable) {
-                    $this->softUndelete($ea, $softDeleteable, $oldValue);
+
+                foreach ($config['cascadeUndelete'] as $cascadeField) {
+                    $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
+                    if ($meta->isCollectionValuedAssociation($cascadeField)) {
+                        $collection = $association;
+                    } else {
+                        $collection = [ $association ];
+                    }
+                    foreach ($collection as $softDeleteable) {
+                        $this->handleUndelete($ea, $softDeleteable, $flushTime, $undeleteStart, $cascadeLevel + 1);
+                    }
                 }
             }
 
@@ -141,61 +246,6 @@ class SoftDeleteableListener extends MappedEventSubscriber
 
             $evm->dispatchEvent(
                 self::POST_SOFT_UNDELETE,
-                $ea->createLifecycleEventArgsInstance($object, $om)
-            );
-        }
-    }
-
-    protected function softDelete($ea, $object)
-    {
-        $om = $ea->getObjectManager();
-        $uow = $om->getUnitOfWork();
-        $evm = $om->getEventManager();
-
-        $meta = $om->getClassMetadata(get_class($object));
-        $config = $this->getConfiguration($om, $meta->name);
-
-        if (isset($config['softDeleteable']) && $config['softDeleteable']) {
-            $fieldName = $config['fieldName'];
-            $reflProp = $meta->getReflectionProperty($fieldName);
-            $oldValue = $reflProp->getValue($object);
-            $date = $ea->getDateValue($meta, $config['fieldName']);
-
-            if (isset($config['hardDelete']) && $config['hardDelete'] && $oldValue instanceof \DateTimeInterface && $oldValue <= $date) {
-                return; // want to hard delete or skip
-            }
-
-            $evm->dispatchEvent(
-                self::PRE_SOFT_DELETE,
-                $ea->createLifecycleEventArgsInstance($object, $om)
-            );
-
-            $reflProp->setValue($object, $date);
-
-            $om->persist($object); // undo delete
-            $uow->propertyChanged($object, $fieldName, $oldValue, $date);
-            if ($uow instanceof MongoDBUnitOfWork && !method_exists($uow, 'scheduleExtraUpdate')) {
-                $ea->recomputeSingleObjectChangeSet($uow, $meta, $object);
-            } else {
-                $uow->scheduleExtraUpdate($object, [
-                    $fieldName=> [$oldValue, $date],
-                ]);
-            }
-
-            foreach ($config['cascadeDelete'] as $cascadeField) {
-                $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
-                if ($meta->isCollectionValuedAssociation($cascadeField)) {
-                    $collection = $association;
-                } else {
-                    $collection = [ $association ];
-                }
-                foreach ($collection as $softDeleteable) {
-                    $this->softDelete($ea, $softDeleteable);
-                }
-            }
-
-            $evm->dispatchEvent(
-                self::POST_SOFT_DELETE,
                 $ea->createLifecycleEventArgsInstance($object, $om)
             );
         }
