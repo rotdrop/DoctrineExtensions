@@ -26,7 +26,7 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter
     /**
      * @param ClassMetadata $meta
      */
-    public function getDateValue($meta, $field)
+    public function getDateValue($meta, $field, ?\DateTimeInterface $date = null)
     {
         $mapping = $meta->getFieldMapping($field);
         $converter = Type::getType($mapping['type'] ?? Types::DATETIME_MUTABLE);
@@ -45,14 +45,16 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter
     private function getRawDateValue(array $mapping)
     {
         if (isset($mapping['type']) && 'integer' === $mapping['type']) {
-            return time();
+            return empty($date) ? time() : $date->getTimestamp();
         }
 
         if (isset($mapping['type']) && in_array($mapping['type'], ['date_immutable', 'time_immutable', 'datetime_immutable', 'datetimetz_immutable'], true)) {
-            return new \DateTimeImmutable();
+            $class = \DateTimeImmutable::class;
+        } else {
+            $class = \DateTime::class;
         }
-
-        return \DateTime::createFromFormat('U.u', number_format(microtime(true), 6, '.', ''))
-            ->setTimeZone(new \DateTimeZone(date_default_timezone_get()));
+        return empty($date)
+            ? new $class()
+            : $class::createFromFormat('U.u', $date->format('U.u'));
     }
 }
