@@ -28,7 +28,7 @@ class HardDeleteExpired implements HardDeleteableInterface
       return false;
     }
 
-    $now = $ea->getDateValue($meta, $fieldName);
+    $now = $this->eventAdapter->getDateValue($meta, $fieldName);
 
     return $oldValue <= $now;
   }
