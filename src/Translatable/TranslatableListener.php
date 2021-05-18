@@ -21,6 +21,7 @@ use Gedmo\Exception\InvalidArgumentException;
 use Gedmo\Exception\RuntimeException;
 use Gedmo\Mapping\MappedEventSubscriber;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
+use Gedmo\Tool\WrapperInterface;
 use Gedmo\Translatable\Mapping\Event\TranslatableAdapter;
 
 /**
@@ -479,7 +480,7 @@ class TranslatableListener extends MappedEventSubscriber
             if (array_key_exists($oid, $this->pendingTranslationInserts)) {
                 // load the pending translations without key
                 $wrapped = AbstractWrapper::wrap($object, $om);
-                $objectId = $wrapped->getIdentifier();
+                $objectId = $wrapped->getIdentifier(false, true);
                 $translationClass = $this->getTranslationClass($ea, get_class($object));
                 foreach ($this->pendingTranslationInserts[$oid] as $translation) {
                     if ($ea->usesPersonalTranslation($translationClass)) {
@@ -694,7 +695,7 @@ class TranslatableListener extends MappedEventSubscriber
         $translationMetadata = $om->getClassMetadata($translationClass);
 
         // check for the availability of the primary key
-        $objectId = $wrapped->getIdentifier();
+        $objectId = $wrapped->getIdentifier(false, true);
         // load the currently used locale
         $locale = $this->getTranslatableLocale($object, $meta, $om);
 
@@ -715,7 +716,7 @@ class TranslatableListener extends MappedEventSubscriber
                     && get_class($trans) === $translationClass
                     && $trans->getLocale() === $this->defaultLocale
                     && $trans->getField() === $field
-                    && $this->belongsToObject($ea, $trans, $object)) {
+                    && $this->belongsToObject($ea, $trans, $wrapped)) {
                     $this->setTranslationInDefaultLocale($oid, $field, $trans);
 
                     break;
@@ -779,7 +780,7 @@ class TranslatableListener extends MappedEventSubscriber
                 $translation->setContent($content);
                 // check if need to update in database
                 $transWrapper = AbstractWrapper::wrap($translation, $om);
-                if (((null === $content && !$isInsert) || is_bool($content) || is_int($content) || is_string($content) || !empty($content)) && ($isInsert || !$transWrapper->getIdentifier() || isset($changeSet[$field]))) {
+                if (((null === $content && !$isInsert) || is_bool($content) || is_int($content) || is_string($content) || !empty($content)) && ($isInsert || !$transWrapper->getIdentifier(false, true) || isset($changeSet[$field]))) {
                     if ($isInsert && !$objectId && !$ea->usesPersonalTranslation($translationClass)) {
                         // if we do not have the primary key yet available
                         // keep this translation in memory to insert it later with foreign key
@@ -884,14 +885,19 @@ class TranslatableListener extends MappedEventSubscriber
 
     /**
      * Checks if the translation entity belongs to the object in question
+     *
+     * @param object $trans
+     * @param WrapperInterface $wrapped
+     *
+     * @return bool
      */
-    private function belongsToObject(TranslatableAdapter $ea, object $trans, object $object): bool
+    private function belongsToObject(TranslatableAdapter $ea, object $trans, WrapperInterface $wrapped):bool
     {
         if ($ea->usesPersonalTranslation(get_class($trans))) {
-            return $trans->getObject() === $object;
+            return $trans->getObject() === $wrapped->getObject();
         }
 
-        return $trans->getForeignKey() === $object->getId()
-            && ($trans->getObjectClass() === get_class($object));
+        return $trans->getForeignKey() === $wrapped->getIdentifier(false, true)
+            && ($trans->getObjectClass() === $wrapped->getMetadata()->name);
     }
 }
