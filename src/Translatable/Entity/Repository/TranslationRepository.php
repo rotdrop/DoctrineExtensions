@@ -61,16 +61,17 @@ class TranslationRepository extends EntityRepository
      */
     public function translate($entity, $field, $locale, $value)
     {
-        $meta = $this->_em->getClassMetadata(get_class($entity));
+        $em = $this->getEntityManager();
+        $meta = $em->getClassMetadata(get_class($entity));
         $listener = $this->getTranslatableListener();
         $config = $listener->getConfiguration($this->_em, $meta->getName());
         if (!isset($config['fields']) || !in_array($field, $config['fields'], true)) {
             throw new InvalidArgumentException("Entity: {$meta->getName()} does not translate field - {$field}");
         }
         $needsPersist = true;
-        if ($locale === $listener->getTranslatableLocale($entity, $meta, $this->getEntityManager())) {
+        if ($locale === $listener->getTranslatableLocale($entity, $meta, $em)) {
             $meta->getReflectionProperty($field)->setValue($entity, $value);
-            $this->_em->persist($entity);
+            $em->persist($entity);
         } else {
             if (isset($config['translationClass'])) {
                 $class = $config['translationClass'];
@@ -78,9 +79,11 @@ class TranslationRepository extends EntityRepository
                 $ea = new TranslatableAdapterORM();
                 $class = $listener->getTranslationClass($ea, $config['useObjectClass']);
             }
-            $foreignKey = $meta->getReflectionProperty($meta->getSingleIdentifierFieldName())->getValue($entity);
+
+            $wrapper = new EntityWrapper($entity, $em);
+            $foreignKey = $wrapper->getIdentifier(false, true);
             $objectClass = $config['useObjectClass'];
-            $transMeta = $this->_em->getClassMetadata($class);
+            $transMeta = $em->getClassMetadata($class);
             $trans = $this->findOneBy(compact('locale', 'objectClass', 'field', 'foreignKey'));
             if (!$trans) {
                 $trans = $transMeta->newInstance();
@@ -89,17 +92,17 @@ class TranslationRepository extends EntityRepository
                 $transMeta->getReflectionProperty('field')->setValue($trans, $field);
                 $transMeta->getReflectionProperty('locale')->setValue($trans, $locale);
             }
-            if ($listener->getDefaultLocale() != $listener->getTranslatableLocale($entity, $meta, $this->getEntityManager()) &&
+            if ($listener->getDefaultLocale() != $listener->getTranslatableLocale($entity, $meta, $em) &&
                 $locale === $listener->getDefaultLocale()) {
                 $listener->setTranslationInDefaultLocale(spl_object_id($entity), $field, $trans);
                 $needsPersist = $listener->getPersistDefaultLocaleTranslation();
             }
             $type = Type::getType($meta->getTypeOfField($field));
-            $transformed = $type->convertToDatabaseValue($value, $this->_em->getConnection()->getDatabasePlatform());
+            $transformed = $type->convertToDatabaseValue($value, $em->getConnection()->getDatabasePlatform());
             $transMeta->getReflectionProperty('content')->setValue($trans, $transformed);
             if ($needsPersist) {
-                if ($this->_em->getUnitOfWork()->isInIdentityMap($entity)) {
-                    $this->_em->persist($trans);
+                if ($em->getUnitOfWork()->isInIdentityMap($entity)) {
+                    $em->persist($trans);
                 } else {
                     $oid = spl_object_id($entity);
                     $listener->addPendingTranslationInsert($oid, $trans);
@@ -121,12 +124,13 @@ class TranslationRepository extends EntityRepository
     public function findTranslations($entity)
     {
         $result = [];
-        $wrapped = new EntityWrapper($entity, $this->_em);
+        $em = $this->getEntityManager();
+        $wrapped = new EntityWrapper($entity, $em);
         if ($wrapped->hasValidIdentifier()) {
-            $entityId = $wrapped->getIdentifier();
+            $entityId = $wrapped->getIdentifier(false, true);
             $config = $this
                 ->getTranslatableListener()
-                ->getConfiguration($this->_em, $wrapped->getMetadata()->getName());
+                ->getConfiguration($em, $wrapped->getMetadata()->name);
 
             if (!$config) {
                 return $result;
@@ -137,7 +141,7 @@ class TranslationRepository extends EntityRepository
 
             $translationClass = $config['translationClass'] ?? $translationMeta->rootEntityName;
 
-            $qb = $this->_em->createQueryBuilder();
+            $qb = $em->createQueryBuilder();
             $qb->select('trans.content, trans.field, trans.locale')
                 ->from($translationClass, 'trans')
                 ->where('trans.foreignKey = :entityId', 'trans.objectClass = :entityClass')
@@ -172,21 +176,22 @@ class TranslationRepository extends EntityRepository
     public function findObjectByTranslatedField($field, $value, $class)
     {
         $entity = null;
-        $meta = $this->_em->getClassMetadata($class);
+        $em = $this->getEntityManager();
+        $meta = $em->getClassMetadata($class);
         $translationMeta = $this->getClassMetadata(); // table inheritance support
         if ($meta->hasField($field)) {
             $dql = "SELECT trans.foreignKey FROM {$translationMeta->rootEntityName} trans";
             $dql .= ' WHERE trans.objectClass = :class';
             $dql .= ' AND trans.field = :field';
             $dql .= ' AND trans.content = :value';
-            $q = $this->_em->createQuery($dql);
+            $q = $em->createQuery($dql);
             $q->setParameters(compact('class', 'field', 'value'));
             $q->setMaxResults(1);
             $result = $q->getArrayResult();
             $id = $result[0]['foreignKey'] ?? null;
 
             if (null !== $id) {
-                $entity = $this->_em->find($class, $id);
+                $entity = $em->find($class, $id);
             }
         }
 
@@ -206,7 +211,7 @@ class TranslationRepository extends EntityRepository
         $result = [];
         if ($id) {
             $translationMeta = $this->getClassMetadata(); // table inheritance support
-            $qb = $this->_em->createQueryBuilder();
+            $qb = $this->getEntityManager()->createQueryBuilder();
             $qb->select('trans.content, trans.field, trans.locale')
                 ->from($translationMeta->rootEntityName, 'trans')
                 ->where('trans.foreignKey = :entityId')
@@ -232,8 +237,8 @@ class TranslationRepository extends EntityRepository
      */
     private function getTranslatableListener(): TranslatableListener
     {
-        if (null === $this->listener) {
-            foreach ($this->_em->getEventManager()->getAllListeners() as $event => $listeners) {
+        if (!$this->listener) {
+            foreach ($this->getEntityManager()->getEventManager()->getListeners() as $event => $listeners) {
                 foreach ($listeners as $hash => $listener) {
                     if ($listener instanceof TranslatableListener) {
                         return $this->listener = $listener;

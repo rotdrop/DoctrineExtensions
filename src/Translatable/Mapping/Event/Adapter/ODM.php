@@ -74,7 +74,7 @@ final class ODM extends BaseAdapterODM implements TranslatableAdapter
             }
             $q = $dm
                 ->createQueryBuilder($translationClass)
-                ->field('object.$id')->equals($wrapped->getIdentifier())
+                ->field('object.$id')->equals($wrapped->getIdentifier(false, true))
                 ->field('locale')->equals($locale)
                 ->getQuery()
             ;
@@ -83,7 +83,7 @@ final class ODM extends BaseAdapterODM implements TranslatableAdapter
             // construct query
             $q = $dm
                 ->createQueryBuilder($translationClass)
-                ->field('foreignKey')->equals($wrapped->getIdentifier())
+                ->field('foreignKey')->equals($wrapped->getIdentifier(false, true))
                 ->field('locale')->equals($locale)
                 ->field('objectClass')->equals($objectClass)
                 ->getQuery()
@@ -108,9 +108,9 @@ final class ODM extends BaseAdapterODM implements TranslatableAdapter
             ->limit(1)
         ;
         if ($this->usesPersonalTranslation($translationClass)) {
-            $qb->field('object.$id')->equals($wrapped->getIdentifier());
+            $qb->field('object.$id')->equals($wrapped->getIdentifier(false, true));
         } else {
-            $qb->field('foreignKey')->equals($wrapped->getIdentifier());
+            $qb->field('foreignKey')->equals($wrapped->getIdentifier(false, true));
             $qb->field('objectClass')->equals($objectClass);
         }
         $q = $qb->getQuery();
@@ -126,9 +126,9 @@ final class ODM extends BaseAdapterODM implements TranslatableAdapter
             ->remove()
         ;
         if ($this->usesPersonalTranslation($transClass)) {
-            $qb->field('object.$id')->equals($wrapped->getIdentifier());
+            $qb->field('object.$id')->equals($wrapped->getIdentifier(false, true));
         } else {
-            $qb->field('foreignKey')->equals($wrapped->getIdentifier());
+            $qb->field('foreignKey')->equals($wrapped->getIdentifier(false, true));
             $qb->field('objectClass')->equals($objectClass);
         }
         $q = $qb->getQuery();
