@@ -413,7 +413,7 @@ class TranslatableListener extends MappedEventSubscriber
             if (array_key_exists($oid, $this->pendingTranslationInserts)) {
                 // load the pending translations without key
                 $wrapped = AbstractWrapper::wrap($object, $om);
-                $objectId = $wrapped->getIdentifier();
+                $objectId = $wrapped->getIdentifier(false, true);
                 $translationClass = $this->getTranslationClass($ea, get_class($object));
                 foreach ($this->pendingTranslationInserts[$oid] as $translation) {
                     if ($ea->usesPersonalTranslation($translationClass)) {
@@ -588,7 +588,7 @@ class TranslatableListener extends MappedEventSubscriber
         $translationMetadata = $om->getClassMetadata($translationClass);
 
         // check for the availability of the primary key
-        $objectId = $wrapped->getIdentifier();
+        $objectId = $wrapped->getIdentifier(false, true);
         // load the currently used locale
         $locale = $this->getTranslatableLocale($object, $meta, $om);
 
@@ -669,7 +669,7 @@ class TranslatableListener extends MappedEventSubscriber
                 $translation->setContent($content);
                 // check if need to update in database
                 $transWrapper = AbstractWrapper::wrap($translation, $om);
-                if (((is_null($content) && !$isInsert) || is_bool($content) || is_int($content) || is_string($content) || !empty($content)) && ($isInsert || !$transWrapper->getIdentifier() || isset($changeSet[$field]))) {
+                if (((is_null($content) && !$isInsert) || is_bool($content) || is_int($content) || is_string($content) || !empty($content)) && ($isInsert || !$transWrapper->getIdentifier(false, true) || isset($changeSet[$field]))) {
                     if ($isInsert && !$objectId && !$ea->usesPersonalTranslation($translationClass)) {
                         // if we do not have the primary key yet available
                         // keep this translation in memory to insert it later with foreign key

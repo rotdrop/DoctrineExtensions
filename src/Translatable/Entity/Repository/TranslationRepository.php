@@ -116,7 +116,7 @@ class TranslationRepository extends EntityRepository
         $result = [];
         $wrapped = new EntityWrapper($entity, $this->_em);
         if ($wrapped->hasValidIdentifier()) {
-            $entityId = $wrapped->getIdentifier();
+            $entityId = $wrapped->getIdentifier(false, true);
             $config = $this
                 ->getTranslatableListener()
                 ->getConfiguration($this->_em, $wrapped->getMetadata()->name);
