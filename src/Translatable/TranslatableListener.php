@@ -795,20 +795,19 @@ class TranslatableListener extends MappedEventSubscriber
         }
         $this->translatedInLocale[$oid] = $locale;
         // check if we have default translation and need to reset the translation
-        if (!$isInsert && strlen($this->defaultLocale)) {
-            $this->validateLocale($this->defaultLocale);
-            $modifiedChangeSet = $changeSet;
-            foreach ($changeSet as $field => $changes) {
-                if (in_array($field, $translatableFields, true)) {
-                    if ($locale !== $this->defaultLocale) {
-                        $ea->setOriginalObjectProperty($uow, $object, $field, $changes[0]);
-                        unset($modifiedChangeSet[$field]);
+        if (!$isInsert && $this->isValidlocale($this->defaultLocale)) {
+
+            if ($locale !== $this->defaultLocale) {
+                // cleanup current changeset only if working in a another locale different than de default one, otherwise the changeset would always be reverted
+                $modifiedChangeSet = $changeSet;
+                foreach ($changeSet as $field => $changes) {
+                    if (in_array($field, $translatableFields, true)) {
+                        if (empty($this->missingInDefaultLocale[$oid][$field])) {
+                            $ea->setOriginalObjectProperty($uow, $object, $field, $changes[1]);
+                            unset($modifiedChangeSet[$field]);
+                        }
                     }
                 }
-            }
-            $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
-            // cleanup current changeset only if working in a another locale different than de default one, otherwise the changeset will always be reverted
-            if ($locale !== $this->defaultLocale) {
                 $ea->clearObjectChangeSet($uow, $object);
                 // recompute changeset only if there are changes other than reverted translations
                 if ($modifiedChangeSet || $this->hasTranslationsInDefaultLocale($oid)) {
