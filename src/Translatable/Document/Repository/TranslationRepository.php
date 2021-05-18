@@ -115,7 +115,7 @@ class TranslationRepository extends DocumentRepository
         $result = [];
         $wrapped = new MongoDocumentWrapper($document, $this->dm);
         if ($wrapped->hasValidIdentifier()) {
-            $documentId = $wrapped->getIdentifier();
+          $documentId = $wrapped->getIdentifier(false, true);
 
             $translationMeta = $this->getClassMetadata(); // table inheritance support
 
