@@ -104,6 +104,7 @@ class EntityWrapper extends AbstractWrapper
                     }
                 }
 
+                ksort($id);
                 return implode(' ', $id);
             }
         }
