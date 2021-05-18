@@ -707,19 +707,16 @@ class TranslatableListener extends MappedEventSubscriber
         // check if we have default translation and need to reset the translation
         if (!$isInsert && strlen($this->defaultLocale)) {
             $this->validateLocale($this->defaultLocale);
-            $modifiedChangeSet = $changeSet;
-            foreach ($changeSet as $field => $changes) {
-                if (in_array($field, $translatableFields)) {
-                    if ($locale !== $this->defaultLocale) {
+            if ($locale !== $this->defaultLocale) {
+                // cleanup current changeset only if working in a another locale different than de default one, otherwise the changeset would always be reverted
+                $ea->clearObjectChangeSet($uow, $oid);
+                $modifiedChangeSet = $changeSet;
+                foreach ($changeSet as $field => $changes) {
+                    if (in_array($field, $translatableFields)) {
                         $ea->setOriginalObjectProperty($uow, $oid, $field, $changes[0]);
                         unset($modifiedChangeSet[$field]);
                     }
                 }
-            }
-            $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
-            // cleanup current changeset only if working in a another locale different than de default one, otherwise the changeset will always be reverted
-            if ($locale !== $this->defaultLocale) {
-                $ea->clearObjectChangeSet($uow, $oid);
                 // recompute changeset only if there are changes other than reverted translations
                 if ($modifiedChangeSet || $this->hasTranslationsInDefaultLocale($oid)) {
                     foreach ($modifiedChangeSet as $field => $changes) {
