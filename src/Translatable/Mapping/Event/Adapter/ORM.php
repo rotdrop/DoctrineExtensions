@@ -82,7 +82,7 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
             }
         } else {
             // load translated content for all translatable fields
-            $objectId = $this->foreignKey($wrapped->getIdentifier(), $translationClass);
+            $objectId = $this->foreignKey($wrapped->getIdentifier(false, true), $translationClass);
             // construct query
             $dql = 'SELECT t.content, t.field FROM '.$translationClass.' t';
             $dql .= ' WHERE t.foreignKey = :objectId';
@@ -139,7 +139,7 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
                         if ($this->usesPersonalTranslation($translationClass)) {
                             $isRequestedTranslation = $trans->getObject() === $wrapped->getObject();
                         } else {
-                            $objectId = $this->foreignKey($wrapped->getIdentifier(), $translationClass);
+                            $objectId = $this->foreignKey($wrapped->getIdentifier(false, true), $translationClass);
                             $isRequestedTranslation = $trans->getForeignKey() === $objectId
                                 && $trans->getObjectClass() === $wrapped->getMetadata()->name
                             ;
@@ -163,7 +163,7 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
         $qb->setParameters(compact('locale', 'field'));
         if ($this->usesPersonalTranslation($translationClass)) {
             $qb->andWhere('trans.object = :object');
-            if ($wrapped->getIdentifier()) {
+            if ($wrapped->getIdentifier(false, true)) {
                 $qb->setParameter('object', $wrapped->getObject());
             } else {
                 $qb->setParameter('object', null);
@@ -171,7 +171,7 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
         } else {
             $qb->andWhere('trans.foreignKey = :objectId');
             $qb->andWhere('trans.objectClass = :objectClass');
-            $qb->setParameter('objectId', $this->foreignKey($wrapped->getIdentifier(), $translationClass));
+            $qb->setParameter('objectId', $this->foreignKey($wrapped->getIdentifier(false, true), $translationClass));
             $qb->setParameter('objectClass', $objectClass);
         }
         $q = $qb->getQuery();
@@ -203,7 +203,7 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
                 'trans.foreignKey = :objectId',
                 'trans.objectClass = :class'
             );
-            $qb->setParameter('objectId', $this->foreignKey($wrapped->getIdentifier(), $transClass));
+            $qb->setParameter('objectId', $this->foreignKey($wrapped->getIdentifier(false, true), $transClass));
             $qb->setParameter('class', $objectClass);
         }
 
