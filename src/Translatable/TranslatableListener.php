@@ -135,6 +135,13 @@ class TranslatableListener extends MappedEventSubscriber
     private ?string $defaultTranslationValue = null;
 
     /**
+     * Tracks empty fields in default locale
+     *
+     * @var array
+     */
+    private $missingInDefaultLocale = [];
+
+    /**
      * Specifies the list of events to listen
      *
      * @return string[]
@@ -529,10 +536,16 @@ class TranslatableListener extends MappedEventSubscriber
                                ||
                                (isset($config['fallback'][$field]) && $config['fallback'][$field]));
 
-                $originalValue = null;
-                if ($translated === $this->defaultTranslationValue && $doFallback) {
+                if ($doFallback) {
                     $originalValue = $meta->getReflectionProperty($field)->getValue($object);
-                    $translated = $this->getFallbackTranslation($originalValue);
+                    if (empty($originalValue)) {
+                        $this->missingInDefaultLocale[$oid][$field] = true;
+                        $originalValue = null;
+                    } else if (empty($translated)) {
+                        $translated = $this->getFallbackTranslation($originalValue);
+                    } else {
+                        $originalValue = null;
+                    }
                 }
 
                 // update translation
@@ -819,6 +832,10 @@ class TranslatableListener extends MappedEventSubscriber
                         if (null !== $this->getTranslationInDefaultLocale($oid, $field)) {
                             $wrapped->setPropertyValue($field, $this->getTranslationInDefaultLocale($oid, $field)->getContent());
                             $this->removeTranslationInDefaultLocale($oid, $field);
+                        } else if (!empty($this->missingInDefaultLocale[$oid][$field])) {
+                            $defaultValue = $this->getFallbackUntranslation($changeSet[$field][1]);
+                            $wrapped->setPropertyValue($field, $defaultValue);
+                            unset($this->missingInDefaultLocale[$oid][$field]);
                         }
                     }
                     $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
