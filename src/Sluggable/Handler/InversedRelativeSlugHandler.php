@@ -45,7 +45,7 @@ class InversedRelativeSlugHandler implements SlugHandlerInterface
     /**
      * {@inheritdoc}
      */
-    public function onChangeDecision(SluggableAdapter $ea, array &$config, $object, &$slug, &$needToChangeSlug)
+  public function onChangeDecision(SluggableAdapter $ea, array &$config, $object, &$slug, &$needToChangeSlug, $otherSlugs)
     {
     }
 
