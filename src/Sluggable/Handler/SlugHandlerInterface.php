@@ -35,10 +35,11 @@ interface SlugHandlerInterface
      * @param object $object
      * @param string $slug
      * @param bool   $needToChangeSlug
+     * @param array  $otherSlugs Array with old and newly generated slug
      *
      * @return void
      */
-    public function onChangeDecision(SluggableAdapter $ea, array &$config, $object, &$slug, &$needToChangeSlug);
+    public function onChangeDecision(SluggableAdapter $ea, array &$config, $object, &$slug, &$needToChangeSlug, $otherSlugs);
 
     /**
      * Hook on slug handlers called after the slug is built.
