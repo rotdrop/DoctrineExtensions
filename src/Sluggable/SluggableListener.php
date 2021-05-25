@@ -282,30 +282,35 @@ class SluggableListener extends MappedEventSubscriber
             }
             // must fetch the old slug from changeset, since $object holds the new version
             $oldSlug = isset($changeSet[$slugField]) ? $changeSet[$slugField][0] : $slug;
-            $needToChangeSlug = false;
+            $needToChangeSlug = (
+                null === $slug // no slug yet
+                || self::PLACEHOLDER_SLUG === $slug // special id hack
+                || isset($changeSet[$slugField]) // slug was set manually
+                );
 
-            // if slug is null, regenerate it, or needs an update
-            if (null === $slug || self::PLACEHOLDER_SLUG === $slug || !isset($changeSet[$slugField])) {
-                $slug = [];
-
-                foreach ($options['fields'] as $sluggableField) {
-                    if (isset($changeSet[$sluggableField]) || isset($changeSet[$slugField])) {
-                        $needToChangeSlug = true;
-                    }
-                    $value = $meta->getReflectionProperty($sluggableField)->getValue($object);
-                    $slug[] = $value instanceof \DateTimeInterface ? $value->format($options['dateFormat']) : $value;
+            $newSlug = [];
+            foreach ($options['fields'] as $sluggableField) {
+                if (isset($changeSet[$sluggableField])) {
+                    $needToChangeSlug = true;
                 }
-                $slug = implode($options['separator'], $slug);
-            } else {
-                // slug was set manually
-                $needToChangeSlug = true;
+                $value = $meta->getReflectionProperty($sluggableField)->getValue($object);
+                // Remove `$value instanceof \DateTime` check when PHP version is bumped to >=5.5
+                $newSlug[] = ($value instanceof \DateTime || $value instanceof \DateTimeInterface) ? $value->format($options['dateFormat']) : $value;
             }
+            $newSlug = implode($options['separator'], $newSlug);
+
+            if (null === $slug || self::PLACEHOLDER_SLUG === $slug || !isset($changeSet[$slugField])) {
+                // ensure that we have a slug
+                $slug = $newSlug;
+            }
+
             // notify slug handlers --> onChangeDecision
             if ($hasHandlers) {
                 foreach ($options['handlers'] as $class => $handlerOptions) {
-                    $this->getHandler($class)->onChangeDecision($ea, $options, $object, $slug, $needToChangeSlug);
+                    $this->getHandler($class)->onChangeDecision($ea, $options, $object, $slug, $needToChangeSlug, [ 'old' => $oldSlug, 'new' => $newSlug ]);
                 }
             }
+
             // if slug is changed, do further processing
             if ($needToChangeSlug) {
                 $mapping = $meta->getFieldMapping($slugField);
