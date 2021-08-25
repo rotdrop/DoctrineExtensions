@@ -134,7 +134,7 @@ class SoftDeleteableListener extends MappedEventSubscriber
             return;
         }
 
-        foreach ($config['cascadeDelete'] as $cascadeField) {
+        foreach (($config['cascadeDelete']??[]) as $cascadeField) {
             $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
             if ($meta->isCollectionValuedAssociation($cascadeField)) {
                 $collection = $association;
