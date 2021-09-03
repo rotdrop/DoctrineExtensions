@@ -101,6 +101,9 @@ class EntityWrapper extends AbstractWrapper
                 foreach ($id as $i => $value) {
                     if (is_object($value) && $this->om->getMetadataFactory()->hasMetadataFor(ClassUtils::getClass($value))) {
                         $id[$i] = (new EntityWrapper($value, $this->om))->getIdentifier(false, true);
+                        if (empty($id[$i])) {
+                            return null;
+                        }
                     }
                 }
 
