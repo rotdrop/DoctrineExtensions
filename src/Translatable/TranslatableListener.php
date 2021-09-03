@@ -473,7 +473,7 @@ class TranslatableListener extends MappedEventSubscriber
                 // load the pending translations without key
                 $wrapped = AbstractWrapper::wrap($object, $om);
                 $objectId = $wrapped->getIdentifier(false, true);
-                $translationClass = $this->getTranslationClass($ea, get_class($object));
+                $translationClass = $this->getTranslationClass($ea, $meta->name);
                 foreach ($this->pendingTranslationInserts[$oid] as $translation) {
                     if ($ea->usesPersonalTranslation($translationClass)) {
                         $translation->setObject($objectId);
