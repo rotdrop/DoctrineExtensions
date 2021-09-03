@@ -13,6 +13,7 @@ use Doctrine\Common\Util\ClassUtils;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\Persistence\Proxy as PersistenceProxy;
+use Doctrine\ORM\Utility\IdentifierFlattener;
 
 /**
  * Wraps entity or proxy for more convenient
@@ -34,6 +35,14 @@ class EntityWrapper extends AbstractWrapper
     private $identifier;
 
     /**
+     * Id-flattener for foreign keys, not to be mixed with flattening
+     * composite ids, we need both.
+     *
+     * @var IdentifierFlattener
+     */
+    private $identifierFlattener;
+
+    /**
      * True if entity or proxy is loaded
      */
     private bool $initialized = false;
@@ -48,6 +57,7 @@ class EntityWrapper extends AbstractWrapper
         $this->om = $em;
         $this->object = $entity;
         $this->meta = $em->getClassMetadata(get_class($this->object));
+        $this->identifierFlattener = new IdentifierFlattener($this->om->getUnitOfWork(), $this->om->getMetadataFactory());
     }
 
     public function getPropertyValue($property)
@@ -83,10 +93,16 @@ class EntityWrapper extends AbstractWrapper
         $flatten = 1 < \func_num_args() && true === func_get_arg(1);
         if (null === $this->identifier) {
             $uow = $this->om->getUnitOfWork();
-            $this->identifier = $uow->isInIdentityMap($this->object)
-                ? $uow->getEntityIdentifier($this->object)
-                : $this->meta->getIdentifierValues($this->object);
-            if (is_array($this->identifier) && empty($this->identifier)) {
+            if ($uow->isInIdentityMap($this->object)) {
+                $this->identifier = $uow->getEntityIdentifier($this->object);
+            } else {
+                // mimic the code from the UOW in order to support foreign ids
+                $identifier = $this->meta->getIdentifierValues($this->object);
+                $this->identifier = $this->meta->containsForeignIdentifier
+                  ? $this->identifierFlattener->flattenIdentifier($this->meta, $identifier)
+                  : $identifier;
+            }
+            if ((is_array($this->identifier) && empty($this->identifier))) {
                 $this->identifier = null;
             }
         }
@@ -95,14 +111,9 @@ class EntityWrapper extends AbstractWrapper
                 return reset($this->identifier);
             }
             if ($flatten) {
-                $id = $this->identifier;
-                foreach ($id as $i => $value) {
-                    if (is_object($value) && $this->om->getMetadataFactory()->hasMetadataFor(ClassUtils::getClass($value))) {
-                        $id[$i] = (new self($value, $this->om))->getIdentifier(false, true);
-                    }
-                }
-
-                return implode(' ', $id);
+                // "flatten" foreign keys
+                // compute the "hash", which in the current UOW is a simple implode, separated with spaces
+                return implode(' ', (array)$this->identifier);
             }
         }
 
