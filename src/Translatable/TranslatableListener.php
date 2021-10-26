@@ -7,6 +7,7 @@ use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ORM\ORMInvalidArgumentException;
 use Gedmo\Mapping\MappedEventSubscriber;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
+use Gedmo\Tool\WrapperInterface;
 use Gedmo\Translatable\Mapping\Event\TranslatableAdapter;
 
 /**
@@ -622,7 +623,7 @@ class TranslatableListener extends MappedEventSubscriber
                     && get_class($trans) === $translationClass
                     && $trans->getLocale() === $this->defaultLocale
                     && $trans->getField() === $field
-                    && $this->belongsToObject($ea, $trans, $object)) {
+                    && $this->belongsToObject($ea, $trans, $wrapped)) {
                     $this->setTranslationInDefaultLocale($oid, $field, $trans);
                     break;
                 }
@@ -839,17 +840,17 @@ class TranslatableListener extends MappedEventSubscriber
      * Checks if the translation entity belongs to the object in question
      *
      * @param object $trans
-     * @param object $object
+     * @param WrapperInterface $wrapped
      *
      * @return bool
      */
-    private function belongsToObject(TranslatableAdapter $ea, $trans, $object)
+    private function belongsToObject(TranslatableAdapter $ea, $trans, WrapperInterface $wrapped)
     {
         if ($ea->usesPersonalTranslation(get_class($trans))) {
-            return $trans->getObject() === $object;
+            return $trans->getObject() === $wrapped->getObject();
         }
 
-        return $trans->getForeignKey() === $object->getId()
-            && ($trans->getObjectClass() === get_class($object));
+        return $trans->getForeignKey() === $wrapped->getIdentifier(false, true)
+            && ($trans->getObjectClass() === $wrapped->getMetadata()->name);
     }
 }
