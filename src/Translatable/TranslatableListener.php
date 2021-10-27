@@ -142,6 +142,17 @@ class TranslatableListener extends MappedEventSubscriber
     private $missingInDefaultLocale = [];
 
     /**
+     * Backup translation data to be restored post-flush when forcing
+     * default-locale updates during flush.
+     *
+     * @var array
+     * ```
+     * [ ROOT_CLASS_NAME => [ OID => [ FIELD => DATA, ... ], ... ], ... ],
+     * ```
+     */
+    private $preFlushBackup = [];
+
+    /**
      * Specifies the list of events to listen
      *
      * @return string[]
@@ -153,6 +164,7 @@ class TranslatableListener extends MappedEventSubscriber
             'postPersist',
             'preFlush',
             'onFlush',
+            'postFlush',
             'loadClassMetadata',
         ];
     }
@@ -461,6 +473,30 @@ class TranslatableListener extends MappedEventSubscriber
         }
     }
 
+    public function postFlush(EventArgs $args)
+    {
+        $ea = $this->getEventAdapter($args);
+        $om = $ea->getObjectManager();
+        $uow = $om->getUnitOfWork();
+
+        $identityMap = $uow->getIdentityMap();
+        foreach ($this->preFlushBackup as $rootClass => $backup) {
+            foreach (($identityMap[$rootClass]??[]) as $object) {
+                $oid = spl_object_hash($object);
+                if (empty($backup[$oid])) {
+                    continue;
+                }
+                $wrapped = AbstractWrapper::wrap($object, $om);
+                foreach ($backup[$oid] as $field => $value) {
+                    // restore the backup and fake clean change-sets
+                    $wrapped->setPropertyValue($field, $value);
+                    $ea->setOriginalObjectProperty($uow, $oid, $field, $value);
+                }
+            }
+        }
+        $this->preFlushBackup = [];
+    }
+
     /**
      * Checks for inserted object to update their translation
      * foreign keys
@@ -548,19 +584,17 @@ class TranslatableListener extends MappedEventSubscriber
                     }
                 }
 
+                $originalValue = $meta->getReflectionProperty($field)->getValue($object);
+
                 $doFallback = ((!isset($config['fallback'][$field]) && $this->translationFallback)
                                ||
                                (isset($config['fallback'][$field]) && $config['fallback'][$field]));
 
                 if ($doFallback) {
-                    $originalValue = $meta->getReflectionProperty($field)->getValue($object);
                     if (empty($originalValue)) {
                         $this->missingInDefaultLocale[$oid][$field] = true;
-                        $originalValue = null;
                     } else if (empty($translated)) {
                         $translated = $this->getFallbackTranslation($originalValue);
-                    } else {
-                        $originalValue = null;
                     }
                 }
 
@@ -572,7 +606,7 @@ class TranslatableListener extends MappedEventSubscriber
                         $om->getUnitOfWork(),
                         $object,
                         $field,
-                        $originalValue?:$meta->getReflectionProperty($field)->getValue($object)
+                        $meta->getReflectionProperty($field)->getValue($object)
                     );
                 }
             }
@@ -714,7 +748,7 @@ class TranslatableListener extends MappedEventSubscriber
         $translatableFields = $config['fields'];
         foreach ($translatableFields as $field) {
             $wasPersistedSeparetely = false;
-            $skip = isset($this->translatedInLocale[$oid]) && $locale === $this->translatedInLocale[$oid];
+            $skip = $locale === ($this->translatedInLocale[$oid]??null);
             $skip = $skip && !isset($changeSet[$field]) && !$this->getTranslationInDefaultLocale($oid, $field);
             if ($skip) {
                 continue; // locale is same and nothing changed
@@ -818,38 +852,45 @@ class TranslatableListener extends MappedEventSubscriber
                     $defaultValue = $this->getFallbackUntranslation($wrapped->getPropertyValue($field));
                 }
                 if ($defaultValue !== null) {
+                    $this->preFlushBackup[$ea->getRootObjectClass($meta)][$oid][$field] = $wrapped->getPropertyValue($field);
                     $wrapped->setPropertyValue($field, $defaultValue);
                     $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
                 }
             }
         }
+
         $this->translatedInLocale[$oid] = $locale;
         // check if we have default translation and need to reset the translation
         if (!$isInsert && $this->isValidlocale($this->defaultLocale)) {
 
             if ($locale !== $this->defaultLocale) {
+
                 // cleanup current changeset only if working in a another locale different than de default one, otherwise the changeset would always be reverted
                 $modifiedChangeSet = $changeSet;
-                foreach ($changeSet as $field => $changes) {
+                foreach ($modifiedChangeSet as $field => $changes) {
                     if (in_array($field, $translatableFields, true)) {
-                        if (empty($this->missingInDefaultLocale[$oid][$field])) {
-                            $ea->setOriginalObjectProperty($uow, $object, $field, $changes[1]);
-                            unset($modifiedChangeSet[$field]);
-                        }
+                        $ea->setOriginalObjectProperty($uow, $object, $field, $changes[1]);
+                        unset($modifiedChangeSet[$field]);
                     }
                 }
                 $ea->clearObjectChangeSet($uow, $object);
                 // recompute changeset only if there are changes other than reverted translations
-                if ($modifiedChangeSet || $this->hasTranslationsInDefaultLocale($oid)) {
+                if (!empty($modifiedChangeSet)
+                    || $this->hasTranslationsInDefaultLocale($oid)
+                    || $this->missingInDefaultLocale[$oid][$field]??false) {
                     foreach ($modifiedChangeSet as $field => $changes) {
                         $ea->setOriginalObjectProperty($uow, $object, $field, $changes[0]);
                     }
                     foreach ($translatableFields as $field) {
-                        if (null !== $this->getTranslationInDefaultLocale($oid, $field)) {
-                            $wrapped->setPropertyValue($field, $this->getTranslationInDefaultLocale($oid, $field)->getContent());
+                        $defaultValue = null;
+                        if ($this->hasTranslationsInDefaultLocale($oid)) {
+                            $defaultValue = $this->getTranslationInDefaultLocale($oid, $field)->getContent();
                             $this->removeTranslationInDefaultLocale($oid, $field);
-                        } else if (!empty($this->missingInDefaultLocale[$oid][$field])) {
+                        } else if ($this->missingInDefaultLocale[$oid][$field]??false) {
                             $defaultValue = $this->getFallbackUntranslation($changeSet[$field][1]);
+                        }
+                        if (!empty($defaultValue)) {
+                            $this->preFlushBackup[$ea->getRootObjectClass($meta)][$oid][$field] = $wrapped->getPropertyValue($field);
                             $wrapped->setPropertyValue($field, $defaultValue);
                             unset($this->missingInDefaultLocale[$oid][$field]);
                         }
