@@ -39,12 +39,12 @@ class Annotation extends AbstractAnnotationDriver
     /**
      * Annotation to define that soft-deletion cascade over this property
      */
-    const SOFT_DELETEABLE_CASCADE = SoftDeleteableCascadeAnnotation::class;
+    public const SOFT_DELETEABLE_CASCADE = SoftDeleteableCascadeAnnotation::class;
 
     /**
      * Hard-delete decision interface_exists
      */
-    const HARD_DELETEABLE_INTERFACE = HardDeleteableInterface::class;
+    public const HARD_DELETEABLE_INTERFACE = HardDeleteableInterface::class;
 
     public function readExtendedMetadata($meta, array &$config)
     {
