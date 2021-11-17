@@ -475,7 +475,7 @@ class TranslatableListener extends MappedEventSubscriber
         $identityMap = $uow->getIdentityMap();
         foreach ($this->preFlushBackup as $rootClass => $backup) {
             foreach (($identityMap[$rootClass]??[]) as $object) {
-                $oid = spl_object_hash($object);
+                $oid = spl_object_id($object);
                 if (empty($backup[$oid])) {
                     continue;
                 }
