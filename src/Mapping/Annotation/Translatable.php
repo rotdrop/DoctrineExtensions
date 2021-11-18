@@ -32,9 +32,18 @@ final class Translatable implements GedmoAnnotation
     public $fallback;
 
     /**
+     * @var string|null
+     *
+     * Optional name of a property for storing the untranslated value as
+     * stored in the data-base table. The field will not be populated in DQL
+     * queries and is not considured by the tree-walker.
+     */
+    public $untranslated;
+
+    /**
      * @param array<string, mixed> $data
      */
-    public function __construct(array $data = [], ?bool $fallback = null)
+    public function __construct(array $data = [], ?bool $fallback = null, ?string $untranslated = null)
     {
         if ([] !== $data) {
             @trigger_error(sprintf(
@@ -45,10 +54,12 @@ final class Translatable implements GedmoAnnotation
             $args = func_get_args();
 
             $this->fallback = $this->getAttributeValue($data, 'fallback', $args, 1, $fallback);
+            $this->untranslated = $this->getAttributeValue($data, 'untranslated', $args, 2, $untranslated);
 
             return;
         }
 
         $this->fallback = $fallback;
+        $this->untranslated = $untranslated;
     }
 }
