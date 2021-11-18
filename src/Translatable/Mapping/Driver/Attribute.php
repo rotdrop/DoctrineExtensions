@@ -73,7 +73,7 @@ class Attribute extends AbstractAnnotationDriver
                 continue;
             }
 
-            // translatable property
+            /** @var Translatable $translatable */
             if ($translatable = $this->reader->getPropertyAnnotation($property, self::TRANSLATABLE)) {
                 \assert($translatable instanceof Translatable);
 
@@ -83,11 +83,20 @@ class Attribute extends AbstractAnnotationDriver
                     throw new InvalidMappingException("Unable to find translatable [{$field}] as mapped property in entity - {$meta->getName()}");
                 }
 
-                // fields cannot be overrided and throws mapping exception
+                // fields cannot be overrided and throws mapping exception (?)
                 $config['fields'][] = $field;
 
                 if (isset($translatable->fallback)) {
                     $config['fallback'][$field] = $translatable->fallback;
+                }
+
+                // annotation requests untranslated database-value in this class property
+                if (isset($translatable->untranslated)) {
+                    $untranslatedField = $translatable->untranslated;
+                    if ($meta->hasField($untranslatedField)) {
+                        throw new InvalidMappingException("Locale field [{$untranslatedField}] should not be mapped as column property in entity - {$meta->name}, since it makes no sense");
+                    }
+                    $config['untranslated'][$field] = $translatable->untranslated;
                 }
             }
 
