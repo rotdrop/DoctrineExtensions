@@ -538,6 +538,20 @@ class TranslatableListener extends MappedEventSubscriber
         }
     }
 
+    private function setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config)
+    {
+        // if requested install the original object property into the given PHP field.
+        if (isset($config['untranslated'][$field])) {
+            $untranslatedProperty = $config['untranslated'][$field];
+            $reflectionProperty = $meta->getReflectionClass()->getProperty($untranslatedProperty);
+            if (!$reflectionProperty) {
+                throw new \Gedmo\Exception\RuntimeException("There is no property ({$untranslatedProperty}) to hold the untranslated original value of property ({$field}) on object: {$meta->name}");
+            }
+            $reflectionProperty->setAccessible(true);
+            $reflectionProperty->setValue($object, $originalValue);
+        }
+    }
+
     /**
      * After object is loaded, listener updates the translations
      * by currently used locale
@@ -589,6 +603,9 @@ class TranslatableListener extends MappedEventSubscriber
                 }
 
                 $originalValue = $meta->getFieldValue($object, $field);
+
+                // if requested install the original object property into the given PHP field.
+                $this->setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config);
 
                 $doFallback = ((!isset($config['fallback'][$field]) && $this->translationFallback)
                                ||
@@ -859,6 +876,9 @@ class TranslatableListener extends MappedEventSubscriber
                     $this->preFlushBackup[$ea->getRootObjectClass($meta)][$oid][$field] = $wrapped->getPropertyValue($field);
                     $wrapped->setPropertyValue($field, $defaultValue);
                     $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
+
+                    // if requested install the original object property into the given PHP field.
+                    $this->setUntranslatedPropertyValue($object, $field, $defaultValue, $meta, $config);
                 }
             }
         }
@@ -897,6 +917,9 @@ class TranslatableListener extends MappedEventSubscriber
                             $this->preFlushBackup[$ea->getRootObjectClass($meta)][$oid][$field] = $wrapped->getPropertyValue($field);
                             $wrapped->setPropertyValue($field, $defaultValue);
                             unset($this->missingInDefaultLocale[$oid][$field]);
+
+                            // if requested install the original object property into the given PHP field.
+                            $this->setUntranslatedPropertyValue($object, $field, $defaultValue, $meta, $config);
                         }
                     }
                     $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
