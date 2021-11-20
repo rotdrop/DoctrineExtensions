@@ -471,6 +471,10 @@ class TranslatableListener extends MappedEventSubscriber
         }
     }
 
+    /**
+     * Restore the translated properties previously backed up in the
+     * preFlush() handler.
+     */
     public function postFlush(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
