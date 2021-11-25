@@ -498,7 +498,7 @@ class TranslatableListener extends MappedEventSubscriber
                 foreach ($backup[$oid] as $field => $value) {
                     // restore the backup and fake clean change-sets
                     $wrapped->setPropertyValue($field, $value);
-                    $ea->setOriginalObjectProperty($uow, $oid, $field, $value);
+                    $ea->setOriginalObjectProperty($uow, $object, $field, $value);
                 }
             }
         }
