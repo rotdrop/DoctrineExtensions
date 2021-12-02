@@ -611,24 +611,28 @@ class TranslatableListener extends MappedEventSubscriber
                                ||
                                (isset($config['fallback'][$field]) && $config['fallback'][$field]));
 
+                $cleanChangeSet = true;
                 if ($doFallback) {
                     if (empty($originalValue)) {
                         $this->missingInDefaultLocale[$oid][$field] = true;
                     } else if (empty($translated)) {
                         $translated = $this->getFallbackTranslation($originalValue);
+                        $cleanChangeSet = false;
                     }
                 }
 
                 // update translation
                 if ($translated !== $this->defaultTranslationValue || !$doFallback) {
                     $ea->setTranslationValue($object, $field, $translated);
-                    // ensure clean changeset
-                    $ea->setOriginalObjectProperty(
-                        $om->getUnitOfWork(),
-                        $object,
-                        $field,
-                        $meta->getReflectionProperty($field)->getValue($object)
-                    );
+                    // ensure clean changeset only if no fallback-translation was computed
+                    if ($cleanChangeSet) {
+                        $ea->setOriginalObjectProperty(
+                            $om->getUnitOfWork(),
+                            $object,
+                            $field,
+                            $meta->getReflectionProperty($field)->getValue($object)
+                        );
+                    }
                 }
             }
         }
