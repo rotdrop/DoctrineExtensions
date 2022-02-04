@@ -33,12 +33,14 @@ final class Timestampable implements GedmoAnnotation
     public $field;
     /** @var mixed */
     public $value;
+    /** @var string */
+    public $timestampField;
 
     /**
      * @param string|string[] $field
      * @param mixed           $value
      */
-    public function __construct(array $data = [], $on = 'update', $field = null, $value = null)
+    public function __construct(array $data = [], $on = 'update', $field = null, $value = null, $timestampField = null)
     {
         if ([] !== $data) {
             @trigger_error(sprintf(
@@ -51,6 +53,7 @@ final class Timestampable implements GedmoAnnotation
             $this->on = $this->getAttributeValue($data, 'on', $args, 1, $on);
             $this->field = $this->getAttributeValue($data, 'field', $args, 2, $field);
             $this->value = $this->getAttributeValue($data, 'value', $args, 3, $value);
+            $this->timestampField = $this->getAttributeTimestampField($data, 'timestampField', $args, 4, $timestampField);
 
             return;
         }
@@ -58,5 +61,6 @@ final class Timestampable implements GedmoAnnotation
         $this->on = $on;
         $this->field = $field;
         $this->value = $value;
+        $this->timestampField = $timestampField;
     }
 }
