@@ -67,19 +67,33 @@ class Attribute extends AbstractAnnotationDriver
 
                 $field = $property->getName();
 
-                if (!$meta->hasField($field)) {
+                if (!$meta->hasField($field) && !$meta->hasAssociation($field)) {
                     throw new InvalidMappingException("Unable to find timestampable [{$field}] as mapped property in entity - {$meta->getName()}");
                 }
 
-                if (!$this->isValidField($meta, $field)) {
+                if ((!$meta->hasAssociation($field) ||
+                     empty($timestampable->timestampField)) &&
+                    !$this->isValidField($meta, $field)) {
                     throw new InvalidMappingException("Field - [{$field}] type is not valid and must be 'date', 'datetime' or 'time' in class - {$meta->getName()}");
                 }
 
                 $triggers = is_array($timestampable->on) ? $timestampable->on : [ $timestampable->on ];
                 foreach ($triggers as $on) {
-                    if (!in_array($on, ['update', 'create', 'change'], true)) {
-                        throw new InvalidMappingException("Field - [{$field}] trigger 'on' is not one of [update, create, change] in class - {$meta->getName()}");
+                    if (!in_array($on, ['update', 'create', 'change', 'delete'], true)) {
+                        throw new InvalidMappingException("Field - [{$field}] trigger 'on' is not one of [update, create, change, delete] in class - {$meta->getName()}");
                     }
+                    if ($on === 'delete') {
+                        if (!$meta->hasAssociation($field)) {
+                            throw new InvalidMappingException("Field - [{$field}] trigger 'on' is 'delete', but [{$field}] is not an association in class - {$meta->getName()}");
+                        }
+                        if (empty($timestampable->timestampField)) {
+                            throw new InvalidMappingException("Field - [{$field}] trigger 'on' is 'delete', but not target-property for storing the stamp is defined in class - {$meta->getName()}");
+                        }
+                    }
+                    $options = [
+                        'field' => $field,
+                        'targetProperty' => $timestampable->timestampField,
+                    ];
                     if ('change' === $on) {
                         if (!isset($timestampable->field)) {
                             throw new InvalidMappingException("Missing parameters on property - {$field}, field must be set on [change] trigger in class - {$meta->getName()}");
@@ -87,14 +101,10 @@ class Attribute extends AbstractAnnotationDriver
                         if (is_array($timestampable->field) && isset($timestampable->value)) {
                             throw new InvalidMappingException('Timestampable extension does not support multiple value changeset detection yet.');
                         }
-                        $field = [
-                            'field' => $field,
-                            'trackedField' => $timestampable->field,
-                            'value' => $timestampable->value,
-                        ];
+                        $options['trackedField'] = $timestampable->field;
+                        $options['value'] = $timestampable->value;
                     }
-                    // properties are unique and mapper checks that, no risk here
-                    $config[$on][] = $field;
+                    $config[$on][] = $options;
                 }
             }
         }
