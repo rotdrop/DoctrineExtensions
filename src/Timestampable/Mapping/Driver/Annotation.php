@@ -94,6 +94,9 @@ class Annotation extends AbstractAnnotationDriver
                         if (is_array($timestampable->field) && isset($timestampable->value)) {
                             throw new InvalidMappingException('Timestampable extension does not support multiple value changeset detection yet.');
                         }
+                        if (!$meta->isSingleValuedAssociation($field) && isset($timestampable->value)) {
+                            throw new InvalidMappingException('Timestampable extension does not support changeset detection for multi-valued association fields.');
+                        }
                         $options['trackedField'] = $timestampable->field;
                         $options['value'] = $timestampable->value;
                     }
