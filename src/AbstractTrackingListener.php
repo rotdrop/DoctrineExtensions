@@ -178,6 +178,24 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                                 $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty);
                                 $changedObjects = array_merge($changedObjects, $changes);
                             }
+                        } else if ($meta->hasAssociation($tracked)
+                                   && !$meta->isSingleValuedAssociation($tracked)
+                                   && ($trackedValue = $meta->getReflectionProperty($tracked)->getValue($object))->isDirty()) {
+                            // The owning-side of MANY_TO_MANY will be
+                            // included in the scheduled-for-update set, but
+                            // the changeset of the corresponding field will
+                            // be empty.
+                            $configuredValues = $this->getPhpValues($options['value'], $meta->getTypeOfField($tracked), $om);
+
+                            // How to handle changed-to if more than one value? That would have to be defined:
+                            // - one element changes to the monitored value?
+                            // - all elements have changed?
+                            // - trigger again if another element of the collection changes?
+                            // So for the moment: DON'T.
+                            if (!empty($configuredValues)) {
+                                throw new UnexpectedValueException("Field - [{$tracked}] is a multivalued association, cannot detect changeset values.");
+                            }
+                            $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty);
                         }
                     }
                 }
