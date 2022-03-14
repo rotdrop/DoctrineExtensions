@@ -313,7 +313,9 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
         }
 
         if (!$meta->hasAssociation($field) || $meta->isSingleValuedAssociation($field)) {
-            $collection = [ $targetObject ];
+            $collection = empty($targetObject) ? [] : [ $targetObject ];
+        } else {
+            $collection = $targetObject;
         }
 
         $changed = [];
