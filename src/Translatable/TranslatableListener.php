@@ -909,7 +909,7 @@ class TranslatableListener extends MappedEventSubscriber
                 // recompute changeset only if there are changes other than reverted translations
                 if (!empty($modifiedChangeSet)
                     || $this->hasTranslationsInDefaultLocale($oid)
-                    || $this->missingInDefaultLocale[$oid][$field]??false) {
+                    || !empty($this->missingInDefaultLocale[$oid][$field])) {
                     foreach ($modifiedChangeSet as $field => $changes) {
                         $ea->setOriginalObjectProperty($uow, $object, $field, $changes[0]);
                     }
@@ -918,7 +918,7 @@ class TranslatableListener extends MappedEventSubscriber
                         if ($this->hasTranslationsInDefaultLocale($oid)) {
                             $defaultValue = $this->getTranslationInDefaultLocale($oid, $field)->getContent();
                             $this->removeTranslationInDefaultLocale($oid, $field);
-                        } else if ($this->missingInDefaultLocale[$oid][$field]??false) {
+                        } else if (!empty($this->missingInDefaultLocale[$oid][$field])) {
                             $defaultValue = $this->getFallbackUntranslation($changeSet[$field][1]);
                         }
                         if (!empty($defaultValue)) {
