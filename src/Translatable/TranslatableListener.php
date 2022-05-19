@@ -917,7 +917,10 @@ class TranslatableListener extends MappedEventSubscriber
                             $defaultValue = $this->getTranslationInDefaultLocale($oid, $field)->getContent();
                             $this->removeTranslationInDefaultLocale($oid, $field);
                         } else if (!empty($this->missingInDefaultLocale[$oid][$field])) {
-                            $defaultValue = $this->getFallbackUntranslation($changeSet[$field][1]);
+                            $translatedValue = $changeSet[$field][1] ?? $wrapped->getPropertyValue($field);
+                            if (!empty($translatedValue)) {
+                                $defaultValue = $this->getFallbackUntranslation($translatedValue);
+                            }
                         }
                         if (!empty($defaultValue)) {
                             $this->preFlushBackup[$ea->getRootObjectClass($meta)][$oid][$field] = $wrapped->getPropertyValue($field);
