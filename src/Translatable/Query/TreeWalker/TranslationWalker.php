@@ -315,6 +315,7 @@ class TranslationWalker extends SqlWalker
             /** @var ClassMetadata $meta */
             $meta = $comp['metadata'];
             $config = $this->listener->getConfiguration($em, $meta->getName());
+
             $transClass = $this->listener->getTranslationClass($ea, $meta->getName());
             $transMeta = $em->getClassMetadata($transClass);
             $transTable = $quoteStrategy->getTableName($transMeta, $this->platform);
@@ -326,21 +327,55 @@ class TranslationWalker extends SqlWalker
                     .' = '.$this->conn->quote($locale);
                 $sql .= ' AND '.$tblAlias.'.'.$quoteStrategy->getColumnName('field', $transMeta, $this->platform)
                     .' = '.$this->conn->quote($field);
-                $identifier = $meta->getSingleIdentifierFieldName();
-                $idColName = $quoteStrategy->getColumnName($identifier, $meta, $this->platform);
-                if ($ea->usesPersonalTranslation($transClass)) {
-                    $sql .= ' AND '.$tblAlias.'.'.$transMeta->getSingleAssociationJoinColumnName('object')
-                        .' = '.$compTblAlias.'.'.$idColName;
-                } else {
-                    $sql .= ' AND '.$tblAlias.'.'.$quoteStrategy->getColumnName('objectClass', $transMeta, $this->platform)
-                        .' = '.$this->conn->quote($config['useObjectClass']);
 
-                    $mappingFK = $transMeta->getFieldMapping('foreignKey');
-                    $mappingPK = $meta->getFieldMapping($identifier);
-                    $fkColName = $this->getCastedForeignKey($compTblAlias.'.'.$idColName, $mappingFK['type'], $mappingPK['type']);
-                    $sql .= ' AND '.$tblAlias.'.'.$quoteStrategy->getColumnName('foreignKey', $transMeta, $this->platform)
-                        .' = '.$fkColName;
+                if ($meta->isIdentifierComposite) {
+                    $quotedIds = array_combine(
+                        $meta->getIdentifierColumnNames(),
+                        $quoteStrategy->getIdentifierColumnNames($meta, $this->platform)
+                    );
+
+                    $idColNames = array_map(
+                        function($col) use ($config, $compTblAlias, $quotedIds) {
+                            $fqcn = $compTblAlias . '.' . $quotedIds[$col];
+                            if (!empty($fmt = $config['idToString'][$col] ?? null)) {
+                                $fqcn = sprintf($fmt, $fqcn);
+                            }
+                            return $fqcn;
+                        },
+                        array_keys($quotedIds));
+
+                    // this works as long as the identifier flattening code in
+                    // src/Tool/Wrapper uses the same ordering or identifier
+                    // columns ...
+                    $fkConcat = 'CONCAT(' . implode(", ' ',", $idColNames) . ')';
+
+                    if ($ea->usesPersonalTranslation($transClass)) {
+                        $sql .= ' AND ' . $tblAlias . '.' . $transMeta->getSingleAssociationJoinColumnName('object') . ' = ' . $fkConcat;
+                    } else {
+                        $sql .= ' AND ' . $tblAlias . '.' . $quoteStrategy->getColumnName('objectClass', $transMeta, $this->platform) . ' = ' . $this->conn->quote($config['useObjectClass']);
+                        $sql .= ' AND ' . $tblAlias . '.' . $quoteStrategy->getColumnName('foreignKey', $transMeta, $this->platform) . ' = ' . $fkConcat;
+                    }
+
+                } else {
+
+                    $identifier = $meta->getSingleIdentifierFieldName();
+
+                    $idColName = $quoteStrategy->getColumnName($identifier, $meta, $this->platform);
+                    if ($ea->usesPersonalTranslation($transClass)) {
+                        $sql .= ' AND '.$tblAlias.'.'.$transMeta->getSingleAssociationJoinColumnName('object')
+                            .' = '.$compTblAlias.'.'.$idColName;
+                    } else {
+                        $sql .= ' AND '.$tblAlias.'.'.$quoteStrategy->getColumnName('objectClass', $transMeta, $this->platform)
+                            .' = '.$this->conn->quote($config['useObjectClass']);
+
+                        $mappingFK = $transMeta->getFieldMapping('foreignKey');
+                        $mappingPK = $meta->getFieldMapping($identifier);
+                        $fkColName = $this->getCastedForeignKey($compTblAlias.'.'.$idColName, $mappingFK['type'], $mappingPK['type']);
+                        $sql .= ' AND '.$tblAlias.'.'.$quoteStrategy->getColumnName('foreignKey', $transMeta, $this->platform)
+                            .' = '.$fkColName;
+                    }
                 }
+
                 isset($this->components[$dqlAlias]) ? $this->components[$dqlAlias] .= $sql : $this->components[$dqlAlias] = $sql;
 
                 $originalField = $compTblAlias.'.'.$quoteStrategy->getColumnName($field, $meta, $this->platform);

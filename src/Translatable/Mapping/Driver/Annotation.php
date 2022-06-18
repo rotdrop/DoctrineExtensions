@@ -57,6 +57,7 @@ class Annotation extends AbstractAnnotationDriver
                 throw new InvalidMappingException("Translation class: {$annot->class} does not exist.");
             }
             $config['translationClass'] = $cl;
+            $config['idToString'] = $annot->idToString;
         }
 
         // property annotations
