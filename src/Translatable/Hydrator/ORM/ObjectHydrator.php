@@ -11,6 +11,7 @@ namespace Gedmo\Translatable\Hydrator\ORM;
 
 use Doctrine\ORM\Internal\Hydration\ObjectHydrator as BaseObjectHydrator;
 use Gedmo\Translatable\TranslatableListener;
+use Gedmo\Translatable\Query\TreeWalker\TranslationWalker;
 
 /**
  * If query uses TranslationQueryWalker and is hydrating
@@ -23,14 +24,14 @@ use Gedmo\Translatable\TranslatableListener;
 class ObjectHydrator extends BaseObjectHydrator
 {
     /**
-     * State of skipOnLoad for listener between hydrations
+     * State of postProcessHydrator for listener between hydrations
      *
      * @see ObjectHydrator::prepare()
      * @see ObjectHydrator::cleanup()
      *
      * @var bool|null
      */
-    private $savedSkipOnLoad;
+    private $savedPostProcessHydrator;
 
     /**
      * @return void
@@ -38,8 +39,8 @@ class ObjectHydrator extends BaseObjectHydrator
     protected function prepare()
     {
         $listener = $this->getTranslatableListener();
-        $this->savedSkipOnLoad = $listener->isSkipOnLoad();
-        $listener->setSkipOnLoad(true);
+        $this->savedPostProcessHydrator = $listener->isPostProcessHydrator();
+        $listener->setPostProcessHydrator(true);
         parent::prepare();
     }
 
@@ -50,7 +51,18 @@ class ObjectHydrator extends BaseObjectHydrator
     {
         parent::cleanup();
         $listener = $this->getTranslatableListener();
-        $listener->setSkipOnLoad($this->savedSkipOnLoad ?? false);
+        $listener->setPostProcessHydrator($this->savedPostProcessHydrator ?? false);
+    }
+
+    protected function hydrateRowData(array $row, array &$result)
+    {
+        foreach ($row as $key => $value) {
+            if (str_starts_with($key, TranslationWalker::UNTRANSLATED_FIELD_PREFIX)) {
+                $baseKey = substr($key, strlen(TranslationWalker::UNTRANSLATED_FIELD_PREFIX) + 1);
+                $row[$baseKey] = json_encode([ 'translated' => $row[$baseKey], 'untranslated' => $row[$key] ]);
+            }
+        }
+        parent::hydrateRowData($row, $result);
     }
 
     /**

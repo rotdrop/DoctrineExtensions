@@ -109,7 +109,7 @@ class TranslatableListener extends MappedEventSubscriber
      *
      * @var bool
      */
-    private $skipOnLoad = false;
+    private $postProcessHydrator = false;
 
     /**
      * Tracks locale the objects currently translated in
@@ -182,9 +182,9 @@ class TranslatableListener extends MappedEventSubscriber
      *
      * @return static
      */
-    public function setSkipOnLoad($bool)
+    public function setPostProcessHydrator($bool)
     {
-        $this->skipOnLoad = (bool) $bool;
+        $this->postProcessHydrator = (bool) $bool;
 
         return $this;
     }
@@ -561,32 +561,39 @@ class TranslatableListener extends MappedEventSubscriber
             $this->translatedInLocale[$oid] = $locale;
         }
 
-        if ($this->skipOnLoad) {
-            return;
-        }
 
         if (isset($config['fields']) && ($locale !== $this->defaultLocale || $this->persistDefaultLocaleTranslation)) {
-            // fetch translations
-            $translationClass = $this->getTranslationClass($ea, $config['useObjectClass']);
-            $result = $ea->loadTranslations(
-                $object,
-                $translationClass,
-                $locale,
-                $config['useObjectClass']
-            );
+            if (!$this->postProcessHydrator) {
+                // fetch translations
+                $translationClass = $this->getTranslationClass($ea, $config['useObjectClass']);
+                $result = $ea->loadTranslations(
+                    $object,
+                    $translationClass,
+                    $locale,
+                    $config['useObjectClass']
+                );
+            }
+
             // translate object's translatable properties
             foreach ($config['fields'] as $field) {
                 $translated = $this->defaultTranslationValue;
 
-                foreach ($result as $entry) {
-                    if ($entry['field'] == $field) {
-                        $translated = $entry['content'] ?? null;
+                if (!$this->postProcessHydrator) {
+                    foreach ($result as $entry) {
+                        if ($entry['field'] == $field) {
+                            $translated = $entry['content'] ?? null;
 
-                        break;
+                            break;
+                        }
                     }
                 }
 
                 $originalValue = $meta->getReflectionProperty($field)->getValue($object);
+
+                if ($this->postProcessHydrator) {
+                    // object hydrator provides translated and untranslated properties as JSON data.
+                    list('translated' => $translated, 'untranslated' => $originalValue) = json_decode($originalValue, true);
+                }
 
                 // if requested install the original object property into the given PHP field.
                 $this->setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config);
@@ -642,9 +649,9 @@ class TranslatableListener extends MappedEventSubscriber
     /**
      * @return bool
      */
-    public function isSkipOnLoad()
+    public function isPostProcessHydrator()
     {
-        return $this->skipOnLoad;
+        return $this->postProcessHydrator;
     }
 
     /**
