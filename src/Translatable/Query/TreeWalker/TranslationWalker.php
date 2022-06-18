@@ -82,6 +82,13 @@ class TranslationWalker extends SqlOutputWalker
     public const HYDRATE_SIMPLE_OBJECT_TRANSLATION = '__gedmo.translatable.simple_object.hydrator';
 
     /**
+     * Prefix for corresponding untranslated field in result set.
+     *
+     * @internal
+     */
+    public const UNTRANSLATED_FIELD_PREFIX = '__gedmo_untranslated';
+
+    /**
      * Stores all component references from select clause
      *
      * @var array<string, array<string, mixed>>
@@ -187,7 +194,7 @@ class TranslationWalker extends SqlOutputWalker
 
     protected function doWalkSelectClauseWithCompat(SelectClause $selectClause): string
     {
-        return $this->replace($this->replacements, parent::walkSelectClause($selectClause));
+        return $this->replaceSelect($this->replacements, parent::walkSelectClause($selectClause));
     }
 
     protected function doWalkFromClauseWithCompat(FromClause $fromClause): string
@@ -217,7 +224,7 @@ class TranslationWalker extends SqlOutputWalker
 
     protected function doWalkSimpleSelectClauseWithCompat(SimpleSelectClause $simpleSelectClause): string
     {
-        return $this->replace($this->replacements, parent::walkSimpleSelectClause($simpleSelectClause));
+        return $this->replaceSelect($this->replacements, parent::walkSimpleSelectClause($simpleSelectClause));
     }
 
     protected function doWalkGroupByClauseWithCompat(GroupByClause $groupByClause): string
@@ -449,6 +456,21 @@ class TranslationWalker extends SqlOutputWalker
     {
         foreach ($repl as $target => $result) {
             $str = preg_replace_callback('/(\s|\()('.$target.')(,?)(\s|\)|$)/smi', static fn (array $m): string => $m[1].$result.$m[3].$m[4], $str);
+        }
+
+        return $str;
+    }
+
+    /**
+     * Replaces given sql $str with required
+     * results
+     */
+    private function replaceSelect(array $repl, string $str): string
+    {
+        foreach ($repl as $target => $result) {
+            $str = preg_replace_callback('/(,?)\s*('.$target.')\s+AS\s+(\w+_[0-9]+)(,?)(\s|$)/smi', static function (array $m) use ($target, $result): string {
+                return $m[1] . ' ' . $target . ' AS ' . self::UNTRANSLATED_FIELD_PREFIX . '_' . $m[3] . ', ' . $result . ' AS ' . $m[3] . $m[4] . $m[5];
+            }, $str);
         }
 
         return $str;
