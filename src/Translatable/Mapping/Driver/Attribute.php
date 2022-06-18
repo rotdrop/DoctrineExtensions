@@ -63,6 +63,7 @@ class Attribute extends AbstractAnnotationDriver
             }
 
             $config['translationClass'] = $cl;
+            $config['idToString'] = $annot->idToString;
         }
 
         // property annotations

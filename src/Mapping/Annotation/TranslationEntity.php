@@ -33,9 +33,21 @@ final class TranslationEntity implements GedmoAnnotation
     public string $class;
 
     /**
+     * @var array
+     *
+     * Mapping of "complicated" columns to strings. This can be used by the
+     * tree-walker where the type-to-php-value conversion cannot be used. The
+     * value can be a valid SQL expression. The actual quoted column name is
+     * replaced by PHP sprintf(FMT, COL_NAME)
+     *
+     * Example: [ 'binary_uuid_column' => 'BIN2UUID(%s)' ],
+     */
+    public $idToString;
+
+    /**
      * @param array<string, mixed> $data
      */
-    public function __construct(array $data = [], string $class = '')
+    public function __construct(array $data = [], string $class = '', array $idToString = [])
     {
         if ([] !== $data) {
             Deprecation::trigger(
@@ -48,10 +60,12 @@ final class TranslationEntity implements GedmoAnnotation
             $args = func_get_args();
 
             $this->class = $this->getAttributeValue($data, 'class', $args, 1, $class);
+            $this->idToString = $this->getAttributeValue($data, 'idToString', $args, 1, $idToString);
 
             return;
         }
 
         $this->class = $class;
+        $this->idToString = $idToString;
     }
 }
