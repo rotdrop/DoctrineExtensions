@@ -59,7 +59,10 @@ class ObjectHydrator extends BaseObjectHydrator
         foreach ($row as $key => $value) {
             if (str_starts_with($key, TranslationWalker::UNTRANSLATED_FIELD_PREFIX)) {
                 $baseKey = substr($key, strlen(TranslationWalker::UNTRANSLATED_FIELD_PREFIX) + 1);
-                $row[$baseKey] = json_encode([ 'translated' => $row[$baseKey], 'untranslated' => $row[$key] ]);
+                $baseKeyInfo = $this->hydrateColumnInfo($baseKey) ?? [];
+                if (!($baseKeyInfo['isScalar'] ?? false)) {
+                    $row[$baseKey] = json_encode([ 'translated' => $row[$baseKey], 'untranslated' => $row[$key] ]);
+                }
             }
         }
         parent::hydrateRowData($row, $result);
