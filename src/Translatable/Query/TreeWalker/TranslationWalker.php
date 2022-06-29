@@ -312,7 +312,7 @@ class TranslationWalker extends SqlWalker
                         array_keys($quotedIds));
 
                     // this works as long as the identifier flattening code in
-                    // src/Tool/Wrapper uses the same ordering or identifier
+                    // src/Tool/Wrapper uses the same ordering as identifier
                     // columns ...
                     $fkConcat = 'CONCAT(' . implode(", ' ',", $idColNames) . ')';
 
