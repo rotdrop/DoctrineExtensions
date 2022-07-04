@@ -100,9 +100,11 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                         $field = $options['field'];
                         $targetProperty = $options['targetProperty'] ?? null;
                     }
-                    // Field can not exist in change set, i.e. when persisting an embedded object without a parent
-                    $new = array_key_exists($field, $changeSet) ? $changeSet[$field][1] : false;
-                    if (null === $new) { // let manual values
+                    // Field may not exist in change set, i.e. when persisting an embedded object without a parent
+                    // If we have a target-property, then always update
+                    $doUpdate = !empty($targetProperty)
+                        || (null === array_key_exists($field, $changeSet) ? $changeSet[$field][1] : false);
+                    if ($doUpdate) { // let manual values
                         $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty ?? null);
                         $changedObjects = array_merge($changedObjects, $changes);
                     }
@@ -116,10 +118,12 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                         $field = $options['field'];
                         $targetProperty = $options['targetProperty'] ?? null;
                     }
-                    $isInsertAndNull = $uow->isScheduledForInsert($object)
-                        && array_key_exists($field, $changeSet)
-                        && null === $changeSet[$field][1];
-                    if (!isset($changeSet[$field]) || $isInsertAndNull) { // let manual values
+                    $doUpdate = !empty($targetProperty)
+                        || ($uow->isScheduledForInsert($object)
+                            && array_key_exists($field, $changeSet)
+                            && null === $changeSet[$field][1])
+                        || !isset($changeSet[$field]);
+                    if ($doUpdate) { // let manual values
                         $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty ?? null);
                         $changedObjects = array_merge($changedObjects, $changes);
                     }
