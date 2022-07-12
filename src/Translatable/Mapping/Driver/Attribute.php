@@ -103,14 +103,18 @@ class Attribute extends AbstractAnnotationDriver
             }
 
             // locale property
-            if ($this->reader->getPropertyAnnotation($property, self::LOCALE)) {
+            $locale = $this->reader->getPropertyAnnotation($property, self::LOCALE);
+            if ($locale) {
                 $field = $property->getName();
 
                 if ($meta->hasField($field)) {
                     throw new InvalidMappingException("Locale field [{$field}] should not be mapped as column property in entity - {$meta->getName()}, since it makes no sense");
                 }
 
-                $config['locale'] = $field;
+                $config['locale'] = [
+                    'field' => $field,
+                    'initialize' => isset($locale->initialize) && $locale->initialize,
+                ];
             } elseif ($this->reader->getPropertyAnnotation($property, self::LANGUAGE)) {
                 $field = $property->getName();
 
