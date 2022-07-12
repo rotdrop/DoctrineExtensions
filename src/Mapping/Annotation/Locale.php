@@ -17,6 +17,7 @@ use Gedmo\Mapping\Annotation\Annotation as GedmoAnnotation;
  *
  * @Annotation
  *
+ * @NamedArgumentConstructor
  * @Target("PROPERTY")
  *
  * @author Gediminas Morkevicius <gediminas.morkevicius@gmail.com>
@@ -24,4 +25,18 @@ use Gedmo\Mapping\Annotation\Annotation as GedmoAnnotation;
 #[\Attribute(\Attribute::TARGET_PROPERTY)]
 final class Locale implements GedmoAnnotation
 {
+    /** @var bool|null */
+    public $initialize;
+
+    public function __construct(array $data = [], ?bool $initialize = null)
+    {
+        if ([] !== $data) {
+            @trigger_error(sprintf(
+                'Passing an array as first argument to "%s()" is deprecated. Use named arguments instead.',
+                __METHOD__
+            ), E_USER_DEPRECATED);
+        }
+
+        $this->initialize = $data['initialize'] ?? $initialize;
+    }
 }
