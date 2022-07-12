@@ -35,8 +35,7 @@ final class Translatable implements GedmoAnnotation
      * @var string|null
      *
      * Optional name of a property for storing the untranslated value as
-     * stored in the data-base table. The field will not be populated in DQL
-     * queries and is not considured by the tree-walker.
+     * stored in the data-base table.
      */
     public $untranslated;
 
