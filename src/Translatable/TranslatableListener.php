@@ -366,7 +366,7 @@ class TranslatableListener extends MappedEventSubscriber
     public function getTranslatableLocale($object, $meta, $om = null)
     {
         $locale = $this->locale;
-        $configurationLocale = self::$configurations[$this->name][$meta->getName()]['locale'] ?? null;
+        $configurationLocale = self::$configurations[$this->name][$meta->getName()]['locale']['field'] ?? null;
         if (null !== $configurationLocale) {
             $class = $meta->getReflectionClass();
             if (!$class->hasProperty($configurationLocale)) {
@@ -380,6 +380,9 @@ class TranslatableListener extends MappedEventSubscriber
             }
             if ($this->isValidLocale($value)) {
                 $locale = $value;
+            }
+            if (self::$configurations[$this->name][$meta->getName()]['locale']['initialize']) {
+                $reflectionProperty->setValue($object, $locale);
             }
         } elseif ($om instanceof DocumentManager) {
             [$mapping, $parentObject] = $om->getUnitOfWork()->getParentAssociation($object);
@@ -877,10 +880,13 @@ class TranslatableListener extends MappedEventSubscriber
                     $this->preFlushBackup[$ea->getRootObjectClass($meta)][$oid][$field] = $wrapped->getPropertyValue($field);
                     $wrapped->setPropertyValue($field, $defaultValue);
                     $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
-
-                    // if requested install the original object property into the given PHP field.
-                    $this->setUntranslatedPropertyValue($object, $field, $defaultValue, $meta, $config);
+                    $untranslated = $defaultValue;
+                } else {
+                    $untranslated = $wrapped->getPropertyValue($field);
                 }
+
+                // if requested install the original object property into the given PHP field.
+                $this->setUntranslatedPropertyValue($object, $field, $untranslated, $meta, $config);
             }
         }
 
