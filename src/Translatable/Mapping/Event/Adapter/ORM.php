@@ -226,6 +226,8 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
         $meta = $wrapped->getMetadata();
         $value = $em->getConnection()->convertToPHPValue($value, $meta->getTypeOfField($field));
         $wrapped->setPropertyValue($field, $value);
+
+        return $value;
     }
 
     /**
