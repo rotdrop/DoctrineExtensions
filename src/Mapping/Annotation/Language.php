@@ -24,4 +24,18 @@ use Gedmo\Mapping\Annotation\Annotation as GedmoAnnotation;
 #[\Attribute(\Attribute::TARGET_PROPERTY)]
 final class Language implements GedmoAnnotation
 {
+    /** @var bool|null */
+    public $initialize;
+
+    public function __construct(array $data = [], ?bool $initialize = null)
+    {
+        if ([] !== $data) {
+            @trigger_error(sprintf(
+                'Passing an array as first argument to "%s()" is deprecated. Use named arguments instead.',
+                __METHOD__
+            ), E_USER_DEPRECATED);
+        }
+
+        $this->initialize = $data['initialize'] ?? $initialize;
+    }
 }
