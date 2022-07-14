@@ -177,6 +177,8 @@ final class ODM extends BaseAdapterODM implements TranslatableAdapter
 
         $value = $type->convertToPHPValue($value);
         $wrapped->setPropertyValue($field, $value);
+
+        return $value;
     }
 
     private function getType(string $type): Type
