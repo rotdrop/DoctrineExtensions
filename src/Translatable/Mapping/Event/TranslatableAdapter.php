@@ -112,7 +112,7 @@ interface TranslatableAdapter extends AdapterInterface
      * @param string $field
      * @param mixed  $value
      *
-     * @return void
+     * @return mixed The value actually set (after potential type conversion)
      */
     public function setTranslationValue($object, $field, $value);
 }
