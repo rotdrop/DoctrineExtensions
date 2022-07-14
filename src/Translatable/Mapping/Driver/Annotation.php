@@ -14,6 +14,7 @@ use Gedmo\Mapping\Annotation\Language;
 use Gedmo\Mapping\Annotation\Locale;
 use Gedmo\Mapping\Annotation\Translatable;
 use Gedmo\Mapping\Annotation\TranslationEntity;
+use Gedmo\Mapping\Annotation\TranslationChangeSet;
 use Gedmo\Mapping\Driver\AbstractAnnotationDriver;
 
 /**
@@ -49,6 +50,13 @@ class Annotation extends AbstractAnnotationDriver
      * alias is LOCALE
      */
     public const LANGUAGE = Language::class;
+
+    /**
+     * Annotation to identify a field which can store the original translated
+     * values. This might be handy as Translatable has to clean the changeset
+     * of the original entity.
+     */
+    public const TRANSLATION_CHANGE_SET = TranslationChangeSet::class;
 
     public function readExtendedMetadata($meta, array &$config)
     {
@@ -100,12 +108,23 @@ class Annotation extends AbstractAnnotationDriver
                     'field' => $field,
                     'initialize' => isset($locale->initialize) && $locale->initialize,
                 ];
-            } elseif ($this->reader->getPropertyAnnotation($property, self::LANGUAGE)) {
+            } elseif ($locale = $this->reader->getPropertyAnnotation($property, self::LANGUAGE)) {
                 $field = $property->getName();
                 if ($meta->hasField($field)) {
                     throw new InvalidMappingException("Language field [{$field}] should not be mapped as column property in entity - {$meta->getName()}, since it makes no sense");
                 }
-                $config['locale'] = $field;
+                $config['locale'] = [
+                    'field' => $field,
+                    'initialize' => isset($locale->initialize) && $locale->initialize,
+                ];
+            }
+            // translation changeset property
+            if ($translationChangeSet = $this->reader->getPropertyAnnotation($property, self::TRANSLATION_CHANGE_SET)) {
+                $field = $property->getName();
+                if ($meta->hasField($field)) {
+                    throw new InvalidMappingException("Translation change-set field [{$field}] should not be mapped as column property in entity - {$meta->getName()}, since it makes no sense");
+                }
+                $config['translationChangeSet'] = $field;
             }
         }
 
