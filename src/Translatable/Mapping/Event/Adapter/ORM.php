@@ -222,6 +222,8 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
         $type = Type::getType($meta->getTypeOfField($field));
         $value = $type->convertToPHPValue($value, $em->getConnection()->getDatabasePlatform());
         $wrapped->setPropertyValue($field, $value);
+
+        return $value;
     }
 
     /**
