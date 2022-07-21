@@ -635,20 +635,21 @@ class TranslatableListener extends MappedEventSubscriber
                 if ($this->postProcessHydrator) {
                     // object hydrator provides translated and untranslated properties as JSON data.
                     list('translated' => $translated, 'untranslated' => $originalValue) = json_decode($originalValue, true);
+
+                    // install $originalValue as current object value
+                    // the following also converts to "PHP" value, as opposed to just using refl->setValue()
+                    $originalValue = $ea->setTranslationValue($object, $field, $originalValue);
+
+                    // install $originalValue as original changeset value
+                    $ea->setOriginalObjectProperty(
+                      $om->getUnitOfWork(),
+                      $object,
+                      $field,
+                      $originalValue
+                    );
+
                     if (array_search($field, $objectConfig['fields']) === false) {
-                        // just restore the original property and skip the rest of this code
-
-                        // the following also converts to "PHP" value, as opposed to just using refl->setValue()
-                        $originalValue = $ea->setTranslationValue($object, $field, $originalValue);
-
-                        // provide a clean changeset
-                        $ea->setOriginalObjectProperty(
-                            $om->getUnitOfWork(),
-                            $object,
-                            $field,
-                            $originalValue
-                        );
-                        continue; // getObjectConfiguration() told us to skip this field
+                        continue; // just restore the original property and skip the rest of this code
                     }
                 }
 
