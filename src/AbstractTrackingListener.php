@@ -75,7 +75,11 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
         $om = $ea->getObjectManager();
         $uow = $om->getUnitOfWork();
         // check all scheduled updates
-        $all = array_merge($ea->getScheduledObjectInsertions($uow), $ea->getScheduledObjectUpdates($uow));
+        $all = array_merge(
+            $ea->getScheduledObjectInsertions($uow),
+            $ea->getScheduledObjectUpdates($uow),
+            $ea->getScheduledObjectDeletions($uow)
+        );
         $changedObjects = []; // spl-hash => [ 'meta' => META, 'object' => OBJECT ]
         foreach ($all as $object) {
             $meta = $om->getClassMetadata(get_class($object));
