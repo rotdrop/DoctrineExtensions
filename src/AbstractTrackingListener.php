@@ -61,6 +61,8 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
     /**
      * Processes object updates when the manager is flushed.
      *
+     * @param EventArgs $args
+     *
      * @return void
      */
     public function onFlush(EventArgs $args)
@@ -77,7 +79,8 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
         $changedObjects = []; // spl-hash => [ 'meta' => META, 'object' => OBJECT ]
         foreach ($all as $object) {
             $meta = $om->getClassMetadata(get_class($object));
-            if (!$config = $this->getConfiguration($om, $meta->getName())) {
+            $config = $this->getConfiguration($om, $meta->getName());
+            if (!$config) {
                 continue;
             }
 
@@ -88,7 +91,9 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                         $targetProperty = $options['targetProperty'] ?? null;
 
                         if (!$meta->hasAssociation($field) || empty($targetProperty)) {
-                            continue; // timestamp make only sense if the stamp-field is inside a target entities which survives
+                            // timestamp make only sense if the stamp-field is
+                            // inside a target entities which survives
+                            continue;
                         }
 
                         $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty);
@@ -186,9 +191,9 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                                 $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty);
                                 $changedObjects = array_merge($changedObjects, $changes);
                             }
-                        } else if ($meta->hasAssociation($tracked)
+                        } elseif ($meta->hasAssociation($tracked)
                                    && !$meta->isSingleValuedAssociation($tracked)
-                                   && ($trackedValue = $meta->getReflectionProperty($tracked)->getValue($object))->isDirty()) {
+                                   && $meta->getReflectionProperty($tracked)->getValue($object)->isDirty()) {
                             // The owning-side of MANY_TO_MANY will be
                             // included in the scheduled-for-update set, but
                             // the changeset of the corresponding field will
@@ -210,13 +215,15 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
             }
         }
 
-        foreach ($changedObjects as $splHash => $objectAndMeta) {
+        foreach ($changedObjects as $objectAndMeta) {
             $ea->recomputeSingleObjectChangeSet($uow, $objectAndMeta['meta'], $objectAndMeta['object']);
         }
     }
 
     /**
      * Processes updates when an object is persisted in the manager.
+     *
+     * @param EventArgs $args
      *
      * @return void
      */
@@ -226,7 +233,8 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
         $om = $ea->getObjectManager();
         $object = $ea->getObject();
         $meta = $om->getClassMetadata(get_class($object));
-        if ($config = $this->getConfiguration($om, $meta->getName())) {
+        $config = $this->getConfiguration($om, $meta->getName());
+        if ($config) {
             if (isset($config['update'])) {
                 foreach ($config['update'] as $field) {
                     if (is_array($field)) {
