@@ -348,6 +348,14 @@ class TranslatableListener extends MappedEventSubscriber
     }
 
     /**
+     * Optionally tweak the configuration on a per object basis.
+     */
+    public function getObjectConfiguration($object, ObjectManager $objectManager, string $class)
+    {
+        return $this->getConfiguration($objectManager, $class);
+    }
+
+    /**
      * Gets the locale to use for translation. Loads object
      * defined locale first.
      *
@@ -452,7 +460,7 @@ class TranslatableListener extends MappedEventSubscriber
         // check all scheduled inserts for Translatable objects
         foreach ($ea->getScheduledObjectInsertions($uow) as $object) {
             $meta = $om->getClassMetadata(get_class($object));
-            $config = $this->getConfiguration($om, $meta->getName());
+            $config = $this->getObjectConfiguration($object, $om, $meta->getName());
             if (isset($config['fields'])) {
                 $this->handleTranslatableObjectUpdate($ea, $object, true);
             }
@@ -460,7 +468,7 @@ class TranslatableListener extends MappedEventSubscriber
         // check all scheduled updates for Translatable entities
         foreach ($ea->getScheduledObjectUpdates($uow) as $object) {
             $meta = $om->getClassMetadata(get_class($object));
-            $config = $this->getConfiguration($om, $meta->getName());
+            $config = $this->getObjectConfiguration($object, $om, $meta->getName());
             if (isset($config['fields'])) {
                 $this->handleTranslatableObjectUpdate($ea, $object, false);
             }
@@ -468,7 +476,7 @@ class TranslatableListener extends MappedEventSubscriber
         // check scheduled deletions for Translatable entities
         foreach ($ea->getScheduledObjectDeletions($uow) as $object) {
             $meta = $om->getClassMetadata(get_class($object));
-            $config = $this->getConfiguration($om, $meta->getName());
+            $config = $this->getObjectConfiguration($object, $om, $meta->getName());
             if (isset($config['fields'])) {
                 $wrapped = AbstractWrapper::wrap($object, $om);
                 $transClass = $this->getTranslationClass($ea, $meta->getName());
@@ -523,7 +531,7 @@ class TranslatableListener extends MappedEventSubscriber
         $object = $ea->getObject();
         $meta = $om->getClassMetadata(get_class($object));
         // check if entity is tracked by translatable and without foreign key
-        if ($this->getConfiguration($om, $meta->getName()) && [] !== $this->pendingTranslationInserts) {
+        if ($this->getObjectConfiguration($object, $om, $meta->getName()) && count($this->pendingTranslationInserts)) {
             $oid = spl_object_id($object);
             if (array_key_exists($oid, $this->pendingTranslationInserts)) {
                 // load the pending translations without key
@@ -573,7 +581,12 @@ class TranslatableListener extends MappedEventSubscriber
         $om = $ea->getObjectManager();
         $object = $ea->getObject();
         $meta = $om->getClassMetadata(get_class($object));
-        $config = $this->getConfiguration($om, $meta->getName());
+        if (!$this->postProcessHydrator) {
+            $config = $this->getObjectConfiguration($object, $om, $meta->getName());
+        } else {
+            $config = $this->getConfiguration($om, $meta->getName());
+            $objectConfig = $this->getObjectConfiguration($object, $om, $meta->getName());
+        }
         $locale = $this->defaultLocale;
         $oid = null;
         if (isset($config['fields'])) {
@@ -614,6 +627,21 @@ class TranslatableListener extends MappedEventSubscriber
                 if ($this->postProcessHydrator) {
                     // object hydrator provides translated and untranslated properties as JSON data.
                     list('translated' => $translated, 'untranslated' => $originalValue) = json_decode($originalValue, true);
+                    if (array_search($field, $objectConfig['fields']) === false) {
+                        // just restore the original property and skip the rest of this code
+
+                        // the following also converte to "PHP" value, as opposed to just using refl->setValue()
+                        $ea->setTranslationValue($object, $field, $originalValue);
+
+                        // provide a clean changeset
+                        $ea->setOriginalObjectProperty(
+                            $om->getUnitOfWork(),
+                            $object,
+                            $field,
+                            $originalValue
+                        );
+                        continue; // getObjectConfiguration() told us to skip this field
+                    }
                 }
 
                 // if requested install the original object property into the given PHP field.
@@ -769,7 +797,7 @@ class TranslatableListener extends MappedEventSubscriber
         $om = $ea->getObjectManager();
         $wrapped = AbstractWrapper::wrap($object, $om);
         $meta = $wrapped->getMetadata();
-        $config = $this->getConfiguration($om, $meta->getName());
+        $config = $this->getObjectConfiguration($object, $om, $meta->getName());
         // no need cache, metadata is loaded only once in MetadataFactoryClass
         $translationClass = $this->getTranslationClass($ea, $config['useObjectClass']);
         $translationMetadata = $om->getClassMetadata($translationClass);
