@@ -328,12 +328,11 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
 
         $changed = [];
         foreach ($collection as $targetObject) {
-            if ($uow->getEntityState($targetObject) != UnitOfWork::STATE_MANAGED) {
-                continue;
-            }
             $wrappedTarget = AbstractWrapper::wrap($targetObject, $om);
-            $oldValue = $wrappedTarget->getPropertyValue($targetField);
-            $eventAdapter->setOriginalObjectProperty($uow, $targetObject, $targetField, $oldValue);
+            if ($uow->getEntityState($targetObject) == UnitOfWork::STATE_MANAGED) {
+                $oldValue = $wrappedTarget->getPropertyValue($targetField);
+                $eventAdapter->setOriginalObjectProperty($uow, $targetObject, $targetField, $oldValue);
+            }
             $wrappedTarget->setPropertyValue($targetField, $newValue);
             if ($targetObject instanceof NotifyPropertyChanged) {
                 if (empty($oldValue)) {
