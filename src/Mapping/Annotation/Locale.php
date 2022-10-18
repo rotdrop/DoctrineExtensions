@@ -17,6 +17,7 @@ use Gedmo\Mapping\Annotation\Annotation as GedmoAnnotation;
  * Locale annotation for Translatable behavioral extension
  *
  * @Annotation
+ * @NamedArgumentConstructor
  * @Target("PROPERTY")
  *
  * @author Gediminas Morkevicius <gediminas.morkevicius@gmail.com>
