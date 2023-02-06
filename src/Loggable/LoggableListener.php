@@ -327,23 +327,23 @@ class LoggableListener extends MappedEventSubscriber
 
         // check for the availability of the primary key
         $uow = $om->getUnitOfWork();
-        if (LoggableInterface::ACTION_CREATE === $action && ($ea->isPostInsertGenerator($meta) || ($meta instanceof \Doctrine\ORM\Mapping\ClassMetadata && $meta->isIdentifierComposite))) {
+        if (LogEntryInterface::ACTION_CREATE === $action && ($ea->isPostInsertGenerator($meta) || ($meta instanceof \Doctrine\ORM\Mapping\ClassMetadata && $meta->isIdentifierComposite))) {
             $this->pendingLogEntryInserts[spl_object_id($object)] = $logEntry;
         } else {
             $logEntry->setObjectId($wrapped->getIdentifier(false, true));
         }
         $newValues = [];
-        if (LoggableInterface::ACTION_REMOVE !== $action && isset($config['versioned'])) {
+        if (LogEntryInterface::ACTION_REMOVE !== $action && isset($config['versioned'])) {
             $newValues = $this->getObjectChangeSetData($ea, $object, $logEntry);
             $logEntry->setData($newValues);
         }
 
-        if (LoggableInterface::ACTION_UPDATE === $action && 0 === count($newValues)) {
+        if (LogEntryInterface::ACTION_UPDATE === $action && 0 === count($newValues)) {
             return null;
         }
 
         $version = 1;
-        if (LoggableInterface::ACTION_CREATE !== $action) {
+        if (LogEntryInterface::ACTION_CREATE !== $action) {
             $version = $ea->getNewVersion($logEntryMeta, $object);
             if (empty($version)) {
                 // was versioned later
