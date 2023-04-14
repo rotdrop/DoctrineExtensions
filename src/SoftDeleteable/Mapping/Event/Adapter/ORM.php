@@ -32,7 +32,7 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter
         $converter = Type::getType($mapping['type'] ?? Types::DATETIME_MUTABLE);
         $platform = $this->getObjectManager()->getConnection()->getDriver()->getDatabasePlatform();
 
-        return $converter->convertToPHPValue($this->getRawDateValue($mapping), $platform);
+        return $converter->convertToPHPValue($this->getRawDateValue($mapping, $date), $platform);
     }
 
     /**
@@ -42,7 +42,7 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter
      *
      * @return \DateTimeInterface|int
      */
-    private function getRawDateValue(array $mapping)
+    private function getRawDateValue(array $mapping, ?\DateTimeInterface $date = null)
     {
         $datetime = new \DateTime();
         $type = $mapping['type'] ?? null;
