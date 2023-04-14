@@ -28,5 +28,5 @@ interface SoftDeleteableAdapter extends AdapterInterface
      *
      * @return int|\DateTimeInterface
      */
-    public function getDateValue($meta, $field, ?\DateTimeInterface $date = null);
+    public function getDateValue($meta, $field);
 }
