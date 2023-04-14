@@ -9,6 +9,7 @@
 
 namespace Gedmo\SoftDeleteable\Mapping\Event\Adapter;
 
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -45,7 +46,7 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter, ClockAw
         $converter = Type::getType($mapping['type'] ?? Types::DATETIME_MUTABLE);
         $platform = $this->getObjectManager()->getConnection()->getDriver()->getDatabasePlatform();
 
-        return $converter->convertToPHPValue($this->getRawDateValue($mapping), $platform);
+        return $converter->convertToPHPValue($this->getRawDateValue($mapping, $date), $platform);
     }
 
     /**
@@ -55,9 +56,9 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter, ClockAw
      *
      * @return \DateTimeInterface|int
      */
-    private function getRawDateValue($mapping)
+    private function getRawDateValue(array $mapping, ?\DateTimeInterface $date = null)
     {
-        $datetime = $this->clock instanceof ClockInterface ? $this->clock->now() : new \DateTimeImmutable();
+        $datetime = $this->clock instanceof ClockInterface ? $this->clock->now() : new DateTimeImmutable();
         $type = $mapping instanceof FieldMapping ? $mapping->type : ($mapping['type'] ?? '');
 
         if ('integer' === $type) {
