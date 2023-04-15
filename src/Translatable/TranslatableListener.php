@@ -952,7 +952,8 @@ class TranslatableListener extends MappedEventSubscriber
                     $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
                     $untranslated = $defaultValue;
                 } else {
-                    $untranslated = $translatedValue; // failed to get a real untranslation
+                    $this->missingInDefaultLocale[$oid][$field] = true;
+                    $untranslated = null; // failed to get a real untranslation
                 }
 
                 // if requested install the original object property into the given PHP field.
