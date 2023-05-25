@@ -36,14 +36,6 @@ class EntityWrapper extends AbstractWrapper
     private $identifier;
 
     /**
-     * Id-flattener for foreign keys, not to be mixed with flattening
-     * composite ids, we need both.
-     *
-     * @var IdentifierFlattener
-     */
-    private $identifierFlattener;
-
-    /**
      * True if entity or proxy is loaded
      */
     private bool $initialized = false;
@@ -58,7 +50,6 @@ class EntityWrapper extends AbstractWrapper
         $this->om = $em;
         $this->object = $entity;
         $this->meta = $em->getClassMetadata(get_class($this->object));
-        $this->identifierFlattener = new IdentifierFlattener($this->om->getUnitOfWork(), $this->om->getMetadataFactory());
     }
 
     public function getPropertyValue($property)
@@ -98,16 +89,16 @@ class EntityWrapper extends AbstractWrapper
                 $this->identifier = $uow->getEntityIdentifier($this->object);
             } else {
                 // mimic the code from the UOW in order to support foreign ids
-                $identifier = $this->meta->getIdentifierValues($this->object);
-                $this->identifier = $this->meta->containsForeignIdentifier
-                  ? $this->identifierFlattener->flattenIdentifier($this->meta, $identifier)
-                  : $identifier;
+                $this->identifier = $this->meta->getIdentifierValues($this->object);
+                if ($this->meta->containsForeignIdentifier || $this->meta->containsEnumIdentifier) {
+                    $this->identifier = $this->flattenIdentifier($this->meta, $this->identifier);
+                }
             }
-            if ((is_array($this->identifier) && empty($this->identifier))) {
+            if (empty($this->identifier) || count($this->identifier) != count(array_filter($this->identifier))) {
                 $this->identifier = null;
             }
         }
-        if (is_array($this->identifier)) {
+        if (null !== $this->identifier) {
             if ($single) {
                 return reset($this->identifier);
             }
@@ -118,7 +109,7 @@ class EntityWrapper extends AbstractWrapper
             }
         }
 
-        return $this->identifier;
+        return null;
     }
 
     public function isEmbeddedAssociation($field)
@@ -137,5 +128,68 @@ class EntityWrapper extends AbstractWrapper
         if ($this->om->isUninitializedObject($this->object)) {
             $this->om->initializeObject($this->object);
         }
+    }
+
+    /**
+     * Convert foreign identifiers into scalar foreign key values to avoid
+     * object to string conversion failures. This is a copy of the
+     * corresponding ORM utility method but it also checks for empty
+     * identifier values. If an invalid (i.e. empty) identifier value is
+     * detected, then an empty array is returned.
+     *
+     * @param mixed[] $id
+     *
+     * @return mixed[]
+     * @psalm-return array<string, mixed>
+     */
+    private function flattenIdentifier(ClassMetadata $class, array $id): array
+    {
+        if (count($id) != count(array_filter($id))) {
+            return [];
+        }
+        $flatId = [];
+
+        $unitOfWork = $this->om->getUnitOfWork();
+        $metadataFactory = $this->om->getMetadataFactory();
+        foreach ($class->identifier as $field) {
+            if (isset($class->associationMappings[$field]) && isset($id[$field])) {
+                $targetEntity = $class->associationMappings[$field]['targetEntity'];
+                $fieldValue = $id[$field];
+                if (is_object($fieldValue) && $fieldValue instanceof $targetEntity) {
+                    $targetClassMetadata = $metadataFactory->getMetadataFor($targetEntity);
+                    assert($targetClassMetadata instanceof ClassMetadata);
+
+                    if ($unitOfWork->isInIdentityMap($id[$field])) {
+                        $associatedId = $this->flattenIdentifier($targetClassMetadata, $unitOfWork->getEntityIdentifier($id[$field]));
+                    } else {
+                        $associatedId = $this->flattenIdentifier($targetClassMetadata, $targetClassMetadata->getIdentifierValues($id[$field]));
+                    }
+                    if (empty($associatedId)) {
+                        return []; // abort
+                    }
+                    $flatId[$field] = implode(' ', $associatedId);
+                } else {
+                    // assume that then $id[$field] is the single identifier
+                    assert(count($class->associationMappings[$field]['joinColumns']) == 1);
+                    $flatId[$field] = $fieldValue;
+                }
+            } elseif (isset($class->associationMappings[$field])) {
+                $associatedId = [];
+
+                foreach ($class->associationMappings[$field]['joinColumns'] as $joinColumn) {
+                    $associatedId[] = $id[$joinColumn['name']];
+                }
+
+                $flatId[$field] = implode(' ', $associatedId);
+            } else if (isset($id[$field])) {
+                if ($id[$field] instanceof BackedEnum) {
+                    $flatId[$field] = $id[$field]->value;
+                } else {
+                    $flatId[$field] = $id[$field];
+                }
+            }
+        }
+
+        return $flatId;
     }
 }
