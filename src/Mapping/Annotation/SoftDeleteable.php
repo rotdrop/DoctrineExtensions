@@ -51,7 +51,7 @@ final class SoftDeleteable implements GedmoAnnotation
      */
     public $hardDelete = true;
 
-    public function __construct(array $data = [], string $fieldName = 'deletedAt', bool $timeAware = false, bool $hardDelete = true)
+    public function __construct(array $data = [], string $fieldName = 'deletedAt', bool $timeAware = false, bool|string $hardDelete = true)
     {
         if ([] !== $data) {
             @trigger_error(sprintf(
