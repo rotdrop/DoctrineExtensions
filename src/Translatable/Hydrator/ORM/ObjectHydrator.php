@@ -54,7 +54,7 @@ class ObjectHydrator extends BaseObjectHydrator
         $listener->setPostProcessHydrator($this->savedPostProcessHydrator ?? false);
     }
 
-    protected function hydrateRowData(array $row, array &$result)
+    protected function hydrateRowData(array $row, array &$result): void
     {
         foreach (array_keys($row) as $key) {
             if (str_starts_with($key, TranslationWalker::UNTRANSLATED_FIELD_PREFIX)) {
