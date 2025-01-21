@@ -52,7 +52,7 @@ final class ORM extends BaseAdapterORM implements SoftDeleteableAdapter, ClockAw
      *
      * @return \DateTimeInterface|int
      */
-    private function getRawDateValue(array $mapping)
+    private function getRawDateValue($mapping)
     {
         $datetime = $this->clock instanceof ClockInterface ? $this->clock->now() : new \DateTimeImmutable();
         $type = $mapping instanceof FieldMapping ? $mapping->type : ($mapping['type'] ?? '');
