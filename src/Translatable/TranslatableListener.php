@@ -365,9 +365,12 @@ class TranslatableListener extends MappedEventSubscriber
      *
      * @return string
      */
-    public function getTranslatableLocale($object, $meta, $om = null)
+    public function getTranslatableLocale($object = null, $meta = null, $om = null)
     {
         $locale = $this->locale;
+        if (empty($object)) {
+            return $locale;
+        }
         $configurationLocale = self::$configurations[$this->name][$meta->getName()]['locale']['field'] ?? null;
         if (null !== $configurationLocale) {
             $class = $meta->getReflectionClass();
