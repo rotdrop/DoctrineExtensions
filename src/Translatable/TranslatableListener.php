@@ -958,8 +958,10 @@ class TranslatableListener extends MappedEventSubscriber
                     $untranslated = null; // failed to get a real untranslation
                 }
 
-                // if requested install the original object property into the given PHP field.
-                $this->setUntranslatedPropertyValue($object, $field, $untranslated, $meta, $config);
+                if ($untranslated !== null) {
+                    // if requested install the original object property into the given PHP field.
+                    $this->setUntranslatedPropertyValue($object, $field, $untranslated, $meta, $config);
+                }
             }
         }
 
