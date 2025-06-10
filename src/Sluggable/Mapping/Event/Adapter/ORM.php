@@ -44,6 +44,15 @@ class ORM extends BaseAdapterORM implements SluggableAdapter
         ;
         $qb->setParameter('slug', $slug.'%');
 
+        $uow = $em->getUnitOfWork();
+        if (!$uow->isScheduledForInsert($object)) {
+            // exclude the object currently operated on from the uniqueness
+            // checks as that does not make sense; its slug will be
+            // overwritten
+            $qb->andWhere($qb->expr()->neq('rec', ':object'));
+            $qb->setParameter('object', $object);
+        }
+
         // use the unique_base to restrict the uniqueness check
         if ($config['unique'] && isset($config['unique_base'])) {
             $ubase = $wrapped->getPropertyValue($config['unique_base']);
