@@ -527,6 +527,9 @@ class SluggableListener extends MappedEventSubscriber
                 if (false !== $base && $meta->getFieldValue($obj, $config['unique_base']) !== $base) {
                     continue; // if unique_base field is not the same, do not take slug as similar
                 }
+                if ($obj === $object) {
+                    continue; // exclude the object currently operated on
+                }
                 $slug = $meta->getFieldValue($obj, $config['slug']);
                 $quotedPreferredSlug = preg_quote($preferredSlug);
                 if (preg_match("@^{$quotedPreferredSlug}.*@smi", $slug)) {
