@@ -41,6 +41,7 @@ final class Slug implements GedmoAnnotation
     public bool $uniqueOverTranslations = false;
     /** @var string|null */
     public $unique_base;
+    public $uniqueInitialSuffix = false;
     public string $separator = '-';
     public string $prefix = '';
     public string $suffix = '';
@@ -71,7 +72,8 @@ final class Slug implements GedmoAnnotation
         string $suffix = '',
         array $handlers = [],
         string $dateFormat = 'Y-m-d-H:i',
-        bool $uniqueOverTranslations = false
+        bool $uniqueOverTranslations = false,
+        bool $uniqueInitialSuffix = false,
     ) {
         if ([] !== $data) {
             Deprecation::trigger(
@@ -94,6 +96,7 @@ final class Slug implements GedmoAnnotation
             $this->handlers = $this->getAttributeValue($data, 'handlers', $args, 9, $handlers);
             $this->dateFormat = $this->getAttributeValue($data, 'dateFormat', $args, 10, $dateFormat);
             $this->uniqueOverTranslations = $this->getAttributeValue($data, 'uniqueOverTranslations', $args, 11, $uniqueOverTranslations);
+            $this->uniqueInitialSuffix = $this->getAttributeValue($data, 'uniqueInitialSuffix', $args, 12, $uniqueInitialSuffix);
 
             return;
         }
@@ -102,6 +105,7 @@ final class Slug implements GedmoAnnotation
         $this->updatable = $updatable;
         $this->style = $style;
         $this->unique = $unique;
+        $this->uniqueInitialSuffix = $uniqueInitialSuffix;
         $this->uniqueOverTranslations = $uniqueOverTranslations;
         $this->unique_base = $unique_base;
         $this->separator = $separator;
