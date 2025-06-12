@@ -144,6 +144,9 @@ class Yaml extends File implements Driver
 
                 $config['slugs'][$field]['unique_base'] = $slug['unique_base'] ?? null;
 
+                $config['slugs'][$field]['uniqueInitialSuffix'] = isset($slug['uniqueInitialSuffix']) ?
+                    (bool) $slug['uniqueInitialSuffix'] : true;
+
                 $config['slugs'][$field]['separator'] = isset($slug['separator']) ?
                     (string) $slug['separator'] : '-';
 
@@ -159,6 +162,9 @@ class Yaml extends File implements Driver
                 $ubase = $config['slugs'][$field]['unique_base'];
                 if (false === $config['slugs'][$field]['unique'] && $ubase) {
                     throw new InvalidMappingException("Slug annotation [unique_base] can not be set if unique is unset or 'false'");
+                }
+                if (false === $config['slugs'][$field]['unique'] && $config['slugs'][$field]['uniqueInitialSuffix']) {
+                    throw new InvalidMappingException("Slug annotation [uniqueInitialSuffix] can not be set if unique is unset or 'false'");
                 }
                 if ($ubase && !$meta->hasField($ubase) && !$meta->hasAssociation($ubase)) {
                     throw new InvalidMappingException("Unable to find [{$ubase}] as mapped property in entity - {$meta->getName()}");
