@@ -192,6 +192,10 @@ class Attribute extends AbstractAnnotationDriver
             throw new InvalidMappingException("Slug annotation [uniqueOverTranslations] can not be set if unique is unset or 'false'");
         }
 
+        if (false === $slug->unique && $slug->uniqueInitialSuffix) {
+            throw new InvalidMappingException("Slug annotation [uniqueInitialSuffix] can not be set if unique is unset or 'false'");
+        }
+
         if ($slug->unique_base && !$meta->hasField($slug->unique_base) && !$meta->hasAssociation($slug->unique_base)) {
             throw new InvalidMappingException("Unable to find [{$slug->unique_base}] as mapped property in entity - {$meta->getName()}");
         }
@@ -211,6 +215,7 @@ class Attribute extends AbstractAnnotationDriver
             'updatable' => $slug->updatable,
             'unique' => $slug->unique,
             'unique_base' => $slug->unique_base,
+            'uniqueInitialSuffix' => $slug->uniqueInitialSuffix,
             'separator' => $slug->separator,
             'prefix' => $slug->prefix,
             'suffix' => $slug->suffix,
