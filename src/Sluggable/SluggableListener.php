@@ -522,7 +522,7 @@ class SluggableListener extends MappedEventSubscriber
         // extract unique base
         $base = false;
 
-        if ($config['unique'] && isset($config['unique_base'])) {
+        if (isset($config['unique_base'])) {
             $base = $meta->getFieldValue($object, $config['unique_base']);
         }
 
@@ -550,8 +550,8 @@ class SluggableListener extends MappedEventSubscriber
 
         if (!$recursing) {
             // filter similar slugs
-            $quotedSeparator = preg_quote($config['separator']);
-            $quotedPreferredSlug = preg_quote($preferredSlug);
+            $quotedSeparator = preg_quote($config['separator'], '@');
+            $quotedPreferredSlug = preg_quote($preferredSlug, '@');
             foreach ($result as $key => $similar) {
                 if (!preg_match("@{$quotedPreferredSlug}($|{$quotedSeparator}[\d]+$)@smi", $similar[$config['slug']])) {
                     unset($result[$key]);
@@ -569,6 +569,11 @@ class SluggableListener extends MappedEventSubscriber
 
             $i = 10 ** $this->exponent;
             $uniqueSuffix = (string) $i;
+            if (!$recursing && $config['uniqueInitialSuffix']) {
+                // always attach at least 1
+                $generatedSlug .= $config['separator'].$uniqueSuffix;
+                $uniqueSuffix = (string) ++$i;
+            }
             if ($recursing || in_array($generatedSlug, $sameSlugs, true)) {
                 do {
                     $generatedSlug = $preferredSlug.$config['separator'].$uniqueSuffix;
@@ -593,6 +598,8 @@ class SluggableListener extends MappedEventSubscriber
                 $generatedSlug = $this->makeUniqueSlug($ea, $object, $generatedSlug, true, $config);
             }
             $preferredSlug = $generatedSlug;
+        } elseif (!$recursing && $config['uniqueInitialSuffix']) {
+            $preferredSlug .= $config['separator'].'1';
         }
 
         return $preferredSlug;

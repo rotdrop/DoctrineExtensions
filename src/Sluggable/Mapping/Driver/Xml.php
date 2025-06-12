@@ -136,6 +136,8 @@ class Xml extends BaseXml
                     $this->_getAttribute($slug, 'dateFormat') : 'Y-m-d-H:i',
                 'unique' => $this->_isAttributeSet($slug, 'unique') ?
                     $this->_getBooleanAttribute($slug, 'unique') : true,
+                'uniqueInitialSuffix' => $this->_isAttributeSet($slug, 'uniqueInitialSuffix') ?
+                    $this->_getBooleanAttribute($slug, 'uniqueInitialSuffix') : true,
                 'unique_base' => $this->_isAttributeSet($slug, 'unique-base') ?
                     $this->_getAttribute($slug, 'unique-base') : null,
                 'separator' => $this->_isAttributeSet($slug, 'separator') ?
@@ -154,6 +156,9 @@ class Xml extends BaseXml
             $ubase = $config['slugs'][$field]['unique_base'];
             if (false === $config['slugs'][$field]['unique'] && $ubase) {
                 throw new InvalidMappingException("Slug annotation [unique_base] can not be set if unique is unset or 'false'");
+            }
+            if (false === $config['slugs'][$field]['unique'] && $config['slugs'][$field]['uniqueInitialSuffix']) {
+                throw new InvalidMappingException("Slug annotation [uniqueInitialSuffix] can not be set if unique is unset or 'false'");
             }
             if ($ubase && !$meta->hasField($ubase) && !$meta->hasAssociation($ubase)) {
                 throw new InvalidMappingException("Unable to find [{$ubase}] as mapped property in entity - {$meta->getName()}");
