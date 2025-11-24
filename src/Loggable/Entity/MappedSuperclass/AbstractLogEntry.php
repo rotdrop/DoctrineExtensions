@@ -25,8 +25,6 @@ use Gedmo\Loggable\Loggable;
 abstract class AbstractLogEntry implements LogEntryInterface
 {
     /**
-     * @var int|null
-     *
      * @ORM\Column(type="integer")
      * @ORM\Id
      * @ORM\GeneratedValue
@@ -34,69 +32,59 @@ abstract class AbstractLogEntry implements LogEntryInterface
     #[ORM\Column(type: Types::INTEGER)]
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    protected $id;
+    protected int $id;
 
     /**
-     * @var string|null
-     *
-     * @phpstan-var self::ACTION_CREATE|self::ACTION_UPDATE|self::ACTION_REMOVE|null
+     * @phpstan-var self::ACTION_CREATE|self::ACTION_UPDATE|self::ACTION_REMOVE
      *
      * @ORM\Column(type="string", length=8)
      */
     #[ORM\Column(type: Types::STRING, length: 8)]
-    protected $action;
+    protected string $action;
 
     /**
-     * @var \DateTime|null
-     *
      * @ORM\Column(name="logged_at", type="datetime")
      */
     #[ORM\Column(name: 'logged_at', type: Types::DATETIME_MUTABLE)]
-    protected $loggedAt;
+    protected \DateTime $loggedAt;
 
     /**
-     * @var string|null
-     *
      * @ORM\Column(name="object_id", length=64, nullable=true)
      */
     #[ORM\Column(name: 'object_id', length: 64, nullable: true)]
-    protected $objectId;
+    protected ?string $objectId;
 
     /**
-     * @var string|null
+     * @var string
      *
-     * @phpstan-var class-string<T>|null
+     * @phpstan-var class-string<T>
      *
      * @ORM\Column(name="object_class", type="string", length=191)
      */
     #[ORM\Column(name: 'object_class', type: Types::STRING, length: 191)]
-    protected $objectClass;
+    protected string $objectClass;
 
     /**
-     * @var int|null
-     *
      * @ORM\Column(type="integer")
      */
     #[ORM\Column(type: Types::INTEGER)]
-    protected $version;
+    protected int $version;
 
     /**
-     * @var array<string, mixed>|null
+     * @var ?array<string, mixed>
      *
      * @ORM\Column(type="array", nullable=true)
      *
      * NOTE: The attribute uses the "array" name directly instead of the constant since it was removed in DBAL 4.0.
      */
     #[ORM\Column(type: 'array', nullable: true)]
-    protected $data;
+    protected ?array $data;
 
     /**
-     * @var string|null
-     *
      * @ORM\Column(length=191, nullable=true)
      */
     #[ORM\Column(length: 191, nullable: true)]
-    protected $username;
+    protected ?string $username;
 
     /**
      * Get id
