@@ -22,26 +22,22 @@ use Gedmo\Mapping\Annotation as Gedmo;
 trait BlameableEntity
 {
     /**
-     * @var string
-     *
      * @Gedmo\Blameable(on="create")
      *
      * @ORM\Column(nullable=true)
      */
     #[ORM\Column(nullable: true)]
     #[Gedmo\Blameable(on: 'create')]
-    protected $createdBy;
+    protected ?string $createdBy = null;
 
     /**
-     * @var string
-     *
      * @Gedmo\Blameable(on="update")
      *
      * @ORM\Column(nullable=true)
      */
     #[ORM\Column(nullable: true)]
     #[Gedmo\Blameable(on: 'update')]
-    protected $updatedBy;
+    protected ?string $updatedBy = null;
 
     /**
      * Sets createdBy.
