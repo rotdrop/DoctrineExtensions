@@ -21,8 +21,6 @@ use Doctrine\ORM\Mapping as ORM;
 abstract class AbstractTranslation
 {
     /**
-     * @var int
-     *
      * @ORM\Column(type="integer")
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="IDENTITY")
@@ -30,47 +28,37 @@ abstract class AbstractTranslation
     #[ORM\Column(type: Types::INTEGER)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    protected $id;
+    protected int $id;
 
     /**
-     * @var string
-     *
      * @ORM\Column(type="string", length=8)
      */
     #[ORM\Column(type: Types::STRING, length: 8)]
-    protected $locale;
+    protected string $locale;
 
     /**
-     * @var string
-     *
      * @ORM\Column(name="object_class", type="string", length=191)
      */
     #[ORM\Column(name: 'object_class', type: Types::STRING, length: 191)]
-    protected $objectClass;
+    protected string $objectClass;
 
     /**
-     * @var string
-     *
      * @ORM\Column(type="string", length=32)
      */
     #[ORM\Column(type: Types::STRING, length: 32)]
-    protected $field;
+    protected string $field;
 
     /**
-     * @var string
-     *
      * @ORM\Column(name="foreign_key", type="string", length=64)
      */
     #[ORM\Column(name: 'foreign_key', type: Types::STRING, length: 64)]
-    protected $foreignKey;
+    protected string $foreignKey;
 
     /**
-     * @var string
-     *
      * @ORM\Column(type="text", nullable=true)
      */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    protected $content;
+    protected ?string $content;
 
     /**
      * Get id
