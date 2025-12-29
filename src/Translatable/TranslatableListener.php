@@ -912,7 +912,9 @@ class TranslatableListener extends MappedEventSubscriber
                     $translation->setObject($object);
                 } else {
                     $translation->setObjectClass($config['useObjectClass']);
-                    $translation->setForeignKey($objectId);
+                    if (!empty($objectId)) {
+                        $translation->setForeignKey($objectId);
+                    }
                 }
             }
 
