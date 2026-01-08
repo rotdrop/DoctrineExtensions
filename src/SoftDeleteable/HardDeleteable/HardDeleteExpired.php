@@ -21,8 +21,9 @@ class HardDeleteExpired implements HardDeleteableInterface
     $om = $this->eventAdapter->getObjectManager();
     $meta = $om->getClassMetadata(get_class($object));
     $fieldName = $config['fieldName'];
-    $reflProp = $meta->getReflectionProperty($fieldName);
-    $oldValue = $reflProp->getValue($object);
+    // $reflProp = $meta->getReflectionProperty($fieldName);
+    // $oldValue = $reflProp->getValue($object);
+    $oldValue = $meta->getPropertyAccessor($fieldName)->getValue($object);
 
     if (empty($oldValue)) {
       return false;
