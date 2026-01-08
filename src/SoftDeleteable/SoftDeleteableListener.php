@@ -146,8 +146,10 @@ class SoftDeleteableListener extends MappedEventSubscriber
         }
 
         $fieldName = $config['fieldName'];
-        $reflProp = $meta->getReflectionProperty($fieldName);
-        $oldValue = $reflProp->getValue($object);
+        // $reflProp = $meta->getReflectionProperty($fieldName);
+        $propAcc = $meta->getPropertyAccessor($fieldName);
+        // $oldValue = $reflProp->getValue($object);
+        $oldValue = $propAcc->getValue($object);
 
         if ($cascadeLevel > 0 && !empty($oldValue)) {
             // don't cascade soft-delete to already soft-deleted entities
@@ -155,7 +157,8 @@ class SoftDeleteableListener extends MappedEventSubscriber
         }
 
         foreach (($config['cascadeDelete']??[]) as $cascadeField) {
-            $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
+            // $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
+            $association = $meta->getPropertyAccessor($cascadeField)->getValue($object);
             if ($meta->isCollectionValuedAssociation($cascadeField)) {
                 $collection = $association;
             } else if (!empty($association)) {
@@ -202,7 +205,8 @@ class SoftDeleteableListener extends MappedEventSubscriber
         }
 
         $date = $ea->getDateValue($meta, $fieldName, $flushTime);
-        $reflProp->setValue($object, $date);
+        // $reflProp->setValue($object, $date);
+        $propAcc->setValue($object, $date);
 
         $om->persist($object); // undo delete
 
@@ -251,15 +255,18 @@ class SoftDeleteableListener extends MappedEventSubscriber
 
         $fieldName = $config['fieldName'];
 
-        $reflProp = $meta->getReflectionProperty($fieldName);
-        $currentValue = $reflProp->getValue($object);
+        // $reflProp = $meta->getReflectionProperty($fieldName);
+        // $currentValue = $reflProp->getValue($object);
+        $propAcc = $meta->getPropertyAccessor($fieldName);
+        $currentValue = $propAcc->getValue($object);
 
         if ($cascadeLevel > 0 && !empty($currentValue)
             && $currentValue >= $ea->getDateValue($meta, $fieldName, $undeleteStart)
             && $currentValue < $ea->getDateValue($meta, $fieldName, $flushTime)) {
 
             // cascade undelete if soft-deletion was later than $undeleteStart
-            $reflProp->setValue($object, null);
+            // $reflProp->setValue($object, null);
+            $propAcc->setValue($object, null);
             $uow->propertyChanged($object, $fieldName, $currentValue, null);
             if ($uow instanceof MongoDBUnitOfWork) {
                 $ea->recomputeSingleObjectChangeSet($uow, $meta, $object);
@@ -281,7 +288,8 @@ class SoftDeleteableListener extends MappedEventSubscriber
         if (!empty($oldValue) && empty($currentValue)) {
 
             // fake old date-stamp and call pre-undelete handler
-            $reflProp->setValue($object, $oldValue);
+            // $reflProp->setValue($object, $oldValue);
+            $propAcc->setValue($object, $oldValue);
 
             if ($evm->hasListeners(self::PRE_SOFT_UNDELETE)) {
                 // @todo: in the next major remove check and only instantiate the event
@@ -306,7 +314,8 @@ class SoftDeleteableListener extends MappedEventSubscriber
                 }
 
                 foreach ($config['cascadeUndelete'] as $cascadeField) {
-                    $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
+                    // $association = $meta->getReflectionProperty($cascadeField)->getValue($object);
+                    $association = $meta->getPropertyAccessor($cascadeField)->getValue($object);
                     if ($meta->isCollectionValuedAssociation($cascadeField)) {
                         $collection = $association;
                     } else {
@@ -319,7 +328,8 @@ class SoftDeleteableListener extends MappedEventSubscriber
             }
 
             // restore new value and call post-undelete handler
-            $reflProp->setValue($object, $currentValue);
+            // $reflProp->setValue($object, $currentValue);
+            $propAcc->setValue($object, $currentValue);
 
             if ($evm->hasListeners(self::POST_SOFT_UNDELETE)) {
                 // @todo: in the next major remove check and only instantiate the event
