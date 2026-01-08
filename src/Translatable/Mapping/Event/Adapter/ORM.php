@@ -194,9 +194,14 @@ final class ORM extends BaseAdapterORM implements TranslatableAdapter
         $meta = $em->getClassMetadata(get_class($translation));
         $data = [];
 
-        foreach ($meta->getReflectionProperties() as $fieldName => $reflProp) {
+        // foreach ($meta->getReflectionProperties() as $fieldName => $reflProp) {
+        //     if (!$meta->isIdentifier($fieldName)) {
+        //         $data[$meta->getColumnName($fieldName)] = $reflProp->getValue($translation);
+        //     }
+        // }
+        foreach ($meta->getPropertyAccessors() as $fieldName => $accessor) {
             if (!$meta->isIdentifier($fieldName)) {
-                $data[$meta->getColumnName($fieldName)] = $reflProp->getValue($translation);
+                $data[$meta->getColumnName($fieldName)] = $accessor->getValue($translation);
             }
         }
 
