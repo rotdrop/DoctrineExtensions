@@ -556,7 +556,12 @@ class TranslatableListener extends MappedEventSubscriber
         }
     }
 
-    /** if requested install the original object property into the given PHP field. */
+    /**
+     * If requested install the original object property into the given PHP field.
+     *
+     * @todo: perhaps easier and more efficient to use a database generated
+     * column which simply duplicates the original value.
+     */
     private function setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config)
     {
         if (isset($config['untranslated'][$field])) {
@@ -681,7 +686,7 @@ class TranslatableListener extends MappedEventSubscriber
                 if ($doFallback) {
                     if (empty($originalValue)) {
                         $this->missingInDefaultLocale[$oid][$field] = true;
-                    } else if (empty($translated)) {
+                    } else if (empty($translated) || $translated == $originalValue) {
                         $translated = $this->getFallbackTranslation($originalValue);
                         $cleanChangeSet = false;
                     }
