@@ -40,7 +40,7 @@ use Gedmo\SoftDeleteable\HardDeleteable\HardDeleteExpired;
  */
 class SoftDeleteableListener extends MappedEventSubscriber
 {
-    static protected $defaultHardDeleteableValidator = HardDeleteExpired::class;
+    protected static $defaultHardDeleteableValidator = HardDeleteExpired::class;
 
     /**
      * Pre soft-delete event
