@@ -80,9 +80,8 @@ class EntityWrapper extends AbstractWrapper
     /**
      * @param bool $flatten
      */
-    public function getIdentifier($single = true, $flatten = false)
+    public function getIdentifier($single = true, bool $flatten = false)
     {
-        $flatten = 1 < \func_num_args() && true === func_get_arg(1);
         if (null === $this->identifier) {
             $uow = $this->om->getUnitOfWork();
             if ($uow->isInIdentityMap($this->object)) {
