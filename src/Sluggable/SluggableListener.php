@@ -462,12 +462,12 @@ class SluggableListener extends MappedEventSubscriber
                 }
 
                 // cut slug if exceeded in length
-                $length = $mapping->length ?? $mapping['length'] ?? null;
+                $length = $mapping->length ?? (property_exists($mapping, 'length') ? null : $mapping['length'] ?? null);
                 if (null !== $length && strlen($slug) > $length) {
                     $slug = substr($slug, 0, $length);
                 }
 
-                if (($mapping->nullable ?? $mapping['nullable'] ?? false) && 0 === strlen($slug)) {
+                if (($mapping->nullable ?? (property_exists($mapping, 'nullable') ? false : mapping['nullable'] ?? false)) && 0 === strlen($slug)) {
                     $slug = null;
                 }
 
