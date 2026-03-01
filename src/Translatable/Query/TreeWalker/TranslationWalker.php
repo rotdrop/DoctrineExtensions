@@ -14,6 +14,7 @@ use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Types\Type;
+use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\Query\AST\DeleteStatement;
@@ -131,6 +132,37 @@ class TranslationWalker extends SqlOutputWalker
         $this->platform = $this->getConnection()->getDatabasePlatform();
         $this->listener = $this->getTranslatableListener();
         $this->extractTranslatedComponents($queryComponents);
+    }
+
+    public static function configure(
+        Configuration $configuration,
+        ?string $translatableLocale = null,
+        ?bool $translationFallback = null,
+    ): void {
+        $configuration->addCustomHydrationMode(
+            self::HYDRATE_OBJECT_TRANSLATION,
+            ObjectHydrator::class,
+        );
+        $configuration->addCustomHydrationMode(
+                self::HYDRATE_SIMPLE_OBJECT_TRANSLATION,
+                SimpleObjectHydrator::class
+            );
+        $configuration->setDefaultQueryHint(
+            \Doctrine\ORM\Query::HINT_CUSTOM_OUTPUT_WALKER,
+            static::class,
+        );
+        if ($translatableLocale !== null) {
+            $configuration->setDefaultQueryHint(
+                TranslatableListener::HINT_TRANSLATABLE_LOCALE,
+                $translatableLocale,
+            );
+        }
+        if ($translationFallback !== null) {
+            $configuration->setDefaultQueryHint(
+                TranslatableListener::HINT_FALLBACK,
+                $translationFallback, // fallback to default values in case if record is not translated
+            );
+        }
     }
 
     /**
