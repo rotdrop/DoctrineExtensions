@@ -107,7 +107,7 @@ class TranslatableListener extends MappedEventSubscriber
      * in charge. We need to skip issuing additional queries
      * on load
      */
-    private bool $postProcessHydrator = false;
+    private bool $skipOnLoad = false;
 
     /**
      * Tracks locale the objects currently translated in
@@ -176,9 +176,9 @@ class TranslatableListener extends MappedEventSubscriber
      *
      * @return static
      */
-    public function setPostProcessHydrator($bool)
+    public function setSkipOnLoad($bool)
     {
-        $this->postProcessHydrator = (bool) $bool;
+        $this->skipOnLoad = (bool) $bool;
 
         return $this;
     }
@@ -626,54 +626,32 @@ class TranslatableListener extends MappedEventSubscriber
             $this->translatedInLocale[$oid] = $locale;
         }
 
-        if (isset($config['fields']) && ($locale !== $this->defaultLocale || $this->persistDefaultLocaleTranslation)) {
-            if (!$this->postProcessHydrator) {
-                // fetch translations
-                $translationClass = $this->getTranslationClass($ea, $config['useObjectClass']);
-                $result = $ea->loadTranslations(
-                    $object,
-                    $translationClass,
-                    $locale,
-                    $config['useObjectClass']
-                );
-            }
+        if ($this->skipOnLoad) {
+            return;
+        }
 
+        if (isset($config['fields']) && ($locale !== $this->defaultLocale || $this->persistDefaultLocaleTranslation)) {
+            // fetch translations
+            $translationClass = $this->getTranslationClass($ea, $config['useObjectClass']);
+            $result = $ea->loadTranslations(
+                $object,
+                $translationClass,
+                $locale,
+                $config['useObjectClass']
+            );
             // translate object's translatable properties
             foreach ($config['fields'] as $field) {
                 $translated = $this->defaultTranslationValue;
 
-                if (!$this->postProcessHydrator) {
-                    foreach ($result as $entry) {
-                        if ($entry['field'] == $field) {
-                            $translated = $entry['content'] ?? null;
+                foreach ($result as $entry) {
+                    if ($entry['field'] == $field) {
+                        $translated = $entry['content'] ?? null;
 
-                            break;
-                        }
+                        break;
                     }
                 }
 
                 $originalValue = $meta->getFieldValue($object, $field);
-
-                if ($this->postProcessHydrator) {
-                    // object hydrator provides translated and untranslated properties as JSON data.
-                    list('translated' => $translated, 'untranslated' => $originalValue) = json_decode($originalValue, true);
-
-                    // install $originalValue as current object value
-                    // the following also converts to "PHP" value, as opposed to just using refl->setValue()
-                    $originalValue = $ea->setTranslationValue($object, $field, $originalValue);
-
-                    // install $originalValue as original changeset value
-                    $ea->setOriginalObjectProperty(
-                      $om->getUnitOfWork(),
-                      $object,
-                      $field,
-                      $originalValue
-                    );
-
-                    if (array_search($field, $objectConfig['fields']) === false) {
-                        continue; // just restore the original property and skip the rest of this code
-                    }
-                }
 
                 // if requested install the original object property into the given PHP field.
                 $this->setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config);
@@ -730,9 +708,9 @@ class TranslatableListener extends MappedEventSubscriber
     /**
      * @return bool
      */
-    public function isPostProcessHydrator()
+    public function isSkipOnLoad()
     {
-        return $this->postProcessHydrator;
+        return $this->skipOnLoad;
     }
 
     /**

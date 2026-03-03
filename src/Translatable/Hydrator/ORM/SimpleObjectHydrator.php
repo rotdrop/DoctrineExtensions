@@ -31,40 +31,26 @@ class SimpleObjectHydrator extends BaseSimpleObjectHydrator
     use HydratorCompat;
 
     /**
-     * State of postProcessHydrator for listener between hydrations
+     * State of skipOnLoad for listener between hydrations
      *
      * @see SimpleObjectHydrator::prepare()
      * @see SimpleObjectHydrator::cleanup()
      */
-    private $savedPostProcessHydrator;
+    private ?bool $savedSkipOnLoad = null;
 
     protected function doPrepareWithCompat(): void
     {
         $listener = $this->getTranslatableListener();
-        $this->savedPostProcessHydrator = $listener->isPostProcessHydrator();
-        $listener->setPostProcessHydrator(true);
+        $this->savedSkipOnLoad = $listener->isSkipOnLoad();
+        $listener->setSkipOnLoad(true);
         parent::prepare();
     }
 
-    protected function hydrateRowData(array $row, array &$result)
-    {
-        foreach (array_keys($row) as $key) {
-            if (str_starts_with($key, TranslationWalker::UNTRANSLATED_FIELD_PREFIX)) {
-                $baseKey = substr($key, strlen(TranslationWalker::UNTRANSLATED_FIELD_PREFIX) + 1);
-                $row[$baseKey] = json_encode([ 'translated' => $row[$baseKey], 'untranslated' => $row[$key] ]);
-            }
-        }
-        parent::hydrateRowData($row, $result);
-    }
-
-    /**
-     * @return void
-     */
     protected function doCleanupWithCompat(): void
     {
         parent::cleanup();
         $listener = $this->getTranslatableListener();
-        $listener->setPostProcessHydrator($this->savedPostProcessHydrator ?? false);
+        $listener->setSkipOnLoad($this->savedSkipOnLoad ?? false);
     }
 
     /**
