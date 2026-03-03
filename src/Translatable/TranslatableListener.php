@@ -612,12 +612,30 @@ class TranslatableListener extends MappedEventSubscriber
         $om = $ea->getObjectManager();
         $object = $ea->getObject();
         $meta = $om->getClassMetadata(get_class($object));
-        if (!$this->postProcessHydrator) {
-            $config = $this->getObjectConfiguration($object, $om, $meta->getName());
-        } else {
-            $config = $this->getConfiguration($om, $meta->getName());
-            $objectConfig = $this->getObjectConfiguration($object, $om, $meta->getName());
+        $config = $this->getObjectConfiguration($object, $om, $meta->getName());
+        if ($this->skipOnLoad) {
+            // if the object configuration has masked some of the translatable
+            // fields then we need to restore the untranslated value
+            $classConfig = $this->getConfiguration($om, $meta->getName());
+            $maskedFields = array_diff($classConfig['fields'], $config['fields']);
+            if (!empty($maskedFields)) {
+                $wrapped = AbstractWrapper::wrap($object, $om);
+                foreach ($maskedFields as $maskedField) {
+                    if (!$config['untranslated'][$maskedField]) {
+                        throw new \Gedmo\Exception\RuntimeException("The untranslated property for the masked field {$meta->name}::{$maskedField} is not configured, cannot restore the untranslated value for it.");
+                    }
+                    $originalValue = $wrapped->getPropertyValue($config['untranslated'][$maskedField]);
+                    $wrapped->setPropertyValue($maskedField, $originalValue);
+                    $ea->setOriginalObjectProperty(
+                        $om->getUnitOfWork(),
+                        $object,
+                        $maskedField,
+                        $originalValue,
+                    );
+                }
+            }
         }
+
         $locale = $this->defaultLocale;
         $oid = null;
         if (isset($config['fields'])) {
@@ -634,11 +652,12 @@ class TranslatableListener extends MappedEventSubscriber
             // fetch translations
             $translationClass = $this->getTranslationClass($ea, $config['useObjectClass']);
             $result = $ea->loadTranslations(
-                $object,
-                $translationClass,
-                $locale,
-                $config['useObjectClass']
+                    $object,
+                    $translationClass,
+                    $locale,
+                    $config['useObjectClass']
             );
+
             // translate object's translatable properties
             foreach ($config['fields'] as $field) {
                 $translated = $this->defaultTranslationValue;
@@ -646,15 +665,10 @@ class TranslatableListener extends MappedEventSubscriber
                 foreach ($result as $entry) {
                     if ($entry['field'] == $field) {
                         $translated = $entry['content'] ?? null;
-
                         break;
                     }
                 }
 
-                $originalValue = $meta->getFieldValue($object, $field);
-
-                // if requested install the original object property into the given PHP field.
-                $this->setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config);
 
                 $doFallback = ((!isset($config['fallback'][$field]) && $this->translationFallback)
                                ||
@@ -664,7 +678,7 @@ class TranslatableListener extends MappedEventSubscriber
                 if ($doFallback) {
                     if (empty($originalValue)) {
                         $this->missingInDefaultLocale[$oid][$field] = true;
-                    } else if (empty($translated) || $translated == $originalValue) {
+                    } elseif (empty($translated) || $translated == $originalValue) {
                         $translated = $this->getFallbackTranslation($originalValue);
                         $cleanChangeSet = false;
                     }
