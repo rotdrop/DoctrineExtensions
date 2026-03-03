@@ -101,10 +101,6 @@ class Attribute extends AbstractAnnotationDriver
 
                 // annotation requests untranslated database-value in this class property
                 if (isset($translatable->untranslated)) {
-                    $untranslatedField = $translatable->untranslated;
-                    if ($meta->hasField($untranslatedField)) {
-                        throw new InvalidMappingException("Locale field [{$untranslatedField}] should not be mapped as column property in entity - {$meta->name}, since it makes no sense");
-                    }
                     $config['untranslated'][$field] = $translatable->untranslated;
                 }
             }
