@@ -202,8 +202,8 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                                 $changedObjects = array_merge($changedObjects, $changes);
                             }
                         } elseif ($meta->hasAssociation($tracked)
-                                   && !$meta->isSingleValuedAssociation($tracked)
-                                   && $meta->getReflectionProperty($tracked)->getValue($object)->isDirty()) {
+                                  && !$meta->isSingleValuedAssociation($tracked)
+                                  && $meta->getPropertyAccessor($tracked)->getValue($object)->isDirty()) {
                             // The owning-side of MANY_TO_MANY will be
                             // included in the scheduled-for-update set, but
                             // the changeset of the corresponding field will
