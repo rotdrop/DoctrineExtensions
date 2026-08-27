@@ -570,7 +570,9 @@ class TranslatableListener extends MappedEventSubscriber
             if (!$reflectionProperty) {
                 throw new \Gedmo\Exception\RuntimeException("There is no property ({$untranslatedProperty}) to hold the untranslated original value of property ({$field}) on object: {$meta->name}");
             }
-            $reflectionProperty->setAccessible(true);
+            if (PHP_VERSION_ID < 80100) {
+                $reflectionProperty->setAccessible(true);
+            }
             $reflectionProperty->setValue($object, $originalValue);
         }
     }
@@ -591,7 +593,9 @@ class TranslatableListener extends MappedEventSubscriber
                 throw new \Gedmo\Exception\RuntimeException("There is no property ({$changeSetProperty}) to hold the original change-set of the translated fields for object: {$meta->name}");
             }
             $translationChangeSet = array_intersect_key($changeSet, array_flip($config['fields']));
-            $reflectionProperty->setAccessible(true);
+            if (PHP_VERSION_ID < 80100) {
+                $reflectionProperty->setAccessible(true);
+            }
             $reflectionProperty->setValue($object, $translationChangeSet);
         }
     }
