@@ -438,6 +438,11 @@ want on **translated fields** instead of original record fields.
 
 And in result there is only one query for all this happiness.
 
+Object and simple-object hydration keep query-walker translations outside mapped
+properties until `postLoad` processes the corresponding entity. This also supports
+ORM 3.8's deferred events, nested hydration and `toIterable()` without putting JSON
+transport values into typed properties or changing listener-wide hydration state.
+
 If you use translation [fallbacks](#advanced-examples) it will be also in the same single
 query and during the hydration process it will replace the empty fields in case if they
 do not have a translation in currently used locale.

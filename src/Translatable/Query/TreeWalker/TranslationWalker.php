@@ -319,11 +319,12 @@ class TranslationWalker extends SqlOutputWalker
                     );
 
                     $idColNames = array_map(
-                        function($col) use ($config, $compTblAlias, $quotedIds) {
-                            $fqcn = $compTblAlias . '.' . $quotedIds[$col];
+                        static function ($col) use ($config, $compTblAlias, $quotedIds) {
+                            $fqcn = $compTblAlias.'.'.$quotedIds[$col];
                             if (!empty($fmt = $config['idToString'][$col] ?? null)) {
                                 $fqcn = sprintf($fmt, $fqcn);
                             }
+
                             return $fqcn;
                         },
                         array_keys($quotedIds));
@@ -331,17 +332,15 @@ class TranslationWalker extends SqlOutputWalker
                     // this works as long as the identifier flattening code in
                     // src/Tool/Wrapper uses the same ordering as identifier
                     // columns ...
-                    $fkConcat = 'CONCAT(' . implode(", ' ',", $idColNames) . ')';
+                    $fkConcat = 'CONCAT('.implode(", ' ',", $idColNames).')';
 
                     if ($ea->usesPersonalTranslation($transClass)) {
-                        $sql .= ' AND ' . $tblAlias . '.' . $transMeta->getSingleAssociationJoinColumnName('object') . ' = ' . $fkConcat;
+                        $sql .= ' AND '.$tblAlias.'.'.$transMeta->getSingleAssociationJoinColumnName('object').' = '.$fkConcat;
                     } else {
-                        $sql .= ' AND ' . $tblAlias . '.' . $quoteStrategy->getColumnName('objectClass', $transMeta, $this->platform) . ' = ' . $this->conn->quote($config['useObjectClass']);
-                        $sql .= ' AND ' . $tblAlias . '.' . $quoteStrategy->getColumnName('foreignKey', $transMeta, $this->platform) . ' = ' . $fkConcat;
+                        $sql .= ' AND '.$tblAlias.'.'.$quoteStrategy->getColumnName('objectClass', $transMeta, $this->platform).' = '.$this->conn->quote($config['useObjectClass']);
+                        $sql .= ' AND '.$tblAlias.'.'.$quoteStrategy->getColumnName('foreignKey', $transMeta, $this->platform).' = '.$fkConcat;
                     }
-
                 } else {
-
                     $identifier = $meta->getSingleIdentifierFieldName();
 
                     $idColName = $quoteStrategy->getColumnName($identifier, $meta, $this->platform);
@@ -467,10 +466,15 @@ class TranslationWalker extends SqlOutputWalker
      */
     private function replaceSelect(array $repl, string $str): string
     {
+        $includeUntranslated = in_array($this->getQuery()->getHydrationMode(), [Query::HYDRATE_OBJECT, Query::HYDRATE_SIMPLEOBJECT], true);
         foreach ($repl as $target => $result) {
-            $str = preg_replace_callback('/(,?)\s*('.$target.')\s+AS\s+(\w+_[0-9]+)(,?)(\s|$)/smi', static function (array $m) use ($target, $result): string {
-                return $m[1] . ' ' . $target . ' AS ' . self::UNTRANSLATED_FIELD_PREFIX . '_' . $m[3] . ', ' . $result . ' AS ' . $m[3] . $m[4] . $m[5];
-            }, $str);
+            $str = preg_replace_callback(
+                '/(,?)\s*('.$target.')\s+AS\s+(\w+_[0-9]+)(,?)(\s|$)/smi',
+                static fn (array $m): string => $includeUntranslated
+                    ? $m[1].' '.$target.' AS '.self::UNTRANSLATED_FIELD_PREFIX.'_'.$m[3].', '.$result.' AS '.$m[3].$m[4].$m[5]
+                    : $m[1].' '.$result.' AS '.$m[3].$m[4].$m[5],
+                $str
+            );
         }
 
         return $str;

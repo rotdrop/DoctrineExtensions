@@ -103,11 +103,9 @@ class TranslatableListener extends MappedEventSubscriber
     private array $pendingTranslationInserts = [];
 
     /**
-     * Currently in case if there is TranslationQueryWalker
-     * in charge. We need to skip issuing additional queries
-     * on load
+     * @var \WeakMap<ObjectManager, \WeakMap<object, array{fields: array<string, mixed>, fallback: bool|null}>>|null
      */
-    private bool $postProcessHydrator = false;
+    private ?\WeakMap $hydratedTranslations = null;
 
     /**
      * Tracks locale the objects currently translated in
@@ -136,21 +134,19 @@ class TranslatableListener extends MappedEventSubscriber
 
     /**
      * Tracks empty fields in default locale
-     *
-     * @var array
      */
-    private $missingInDefaultLocale = [];
+    private array $missingInDefaultLocale = [];
 
     /**
      * Backup translation data to be restored post-flush when forcing
      * default-locale updates during flush.
      *
      * @var array
-     * ```
-     * [ ROOT_CLASS_NAME => [ OID => [ FIELD => DATA, ... ], ... ], ... ],
-     * ```
+     *            ```
+     *            [ ROOT_CLASS_NAME => [ OID => [ FIELD => DATA, ... ], ... ], ... ],
+     *            ```
      */
-    private $preFlushBackup = [];
+    private array $preFlushBackup = [];
 
     /**
      * Specifies the list of events to listen
@@ -166,21 +162,36 @@ class TranslatableListener extends MappedEventSubscriber
             'onFlush',
             'postFlush',
             'loadClassMetadata',
+            'onClear',
         ];
     }
 
     /**
-     * Set to skip or not onLoad event
+     * @param array<string, mixed> $translations database values selected by TranslationWalker
      *
-     * @param bool $bool
-     *
-     * @return static
+     * @internal
      */
-    public function setPostProcessHydrator($bool)
+    public function setHydratedTranslations(ObjectManager $om, object $object, array $translations, ?bool $fallback = null): void
     {
-        $this->postProcessHydrator = (bool) $bool;
+        $this->hydratedTranslations ??= new \WeakMap();
+        if (!isset($this->hydratedTranslations[$om])) {
+            /** @var \WeakMap<object, array{fields: array<string, mixed>, fallback: bool|null}> $pending */
+            $pending = new \WeakMap();
+            $this->hydratedTranslations[$om] = $pending;
+        }
+        $this->hydratedTranslations[$om][$object] = ['fields' => $translations, 'fallback' => $fallback];
+    }
 
-        return $this;
+    /**
+     * @param ManagerEventArgs $args
+     *
+     * @phpstan-param ManagerEventArgs<ObjectManager> $args
+     */
+    public function onClear(EventArgs $args): void
+    {
+        if (null !== $this->hydratedTranslations) {
+            unset($this->hydratedTranslations[$args->getObjectManager()]);
+        }
     }
 
     /**
@@ -421,8 +432,16 @@ class TranslatableListener extends MappedEventSubscriber
         $ea = $this->getEventAdapter($args);
         $om = $ea->getObjectManager();
         $uow = $om->getUnitOfWork();
+        $scheduledInsertions = [];
+        foreach ($ea->getScheduledObjectInsertions($uow) as $object) {
+            $scheduledInsertions[spl_object_id($object)] = true;
+        }
 
         foreach ($this->translationInDefaultLocale as $oid => $fields) {
+            if (isset($scheduledInsertions[$oid])) {
+                continue;
+            }
+
             $trans = reset($fields);
 
             assert(false !== $trans);
@@ -503,7 +522,7 @@ class TranslatableListener extends MappedEventSubscriber
 
         $identityMap = $uow->getIdentityMap();
         foreach ($this->preFlushBackup as $rootClass => $backup) {
-            foreach (($identityMap[$rootClass]??[]) as $object) {
+            foreach (($identityMap[$rootClass] ?? []) as $object) {
                 $oid = spl_object_id($object);
                 if (empty($backup[$oid])) {
                     continue;
@@ -557,52 +576,12 @@ class TranslatableListener extends MappedEventSubscriber
     }
 
     /**
-     * If requested install the original object property into the given PHP field.
-     *
-     * @todo: perhaps easier and more efficient to use a database generated
-     * column which simply duplicates the original value.
-     */
-    private function setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config)
-    {
-        if (isset($config['untranslated'][$field])) {
-            $untranslatedProperty = $config['untranslated'][$field];
-            $reflectionProperty = $meta->getReflectionClass()->getProperty($untranslatedProperty);
-            if (!$reflectionProperty) {
-                throw new \Gedmo\Exception\RuntimeException("There is no property ({$untranslatedProperty}) to hold the untranslated original value of property ({$field}) on object: {$meta->name}");
-            }
-            $reflectionProperty->setAccessible(true);
-            $reflectionProperty->setValue($object, $originalValue);
-        }
-    }
-
-    /**
-     * If request record the original pre-change TRANSLATED property. The
-     * problem is here the we need to reset the changeset of the original
-     * entity. This, however, make the original translated values unavailable
-     * in the preUpdate handlers. So before doing any tweaks we just record
-     * the changeset if this is requested by the OriginalValues annotation.
-     */
-    private function recordTranslationChangeSet($object, $changeSet, $meta, $config)
-    {
-        // if requested install the original object property into the given PHP field.
-        if ($changeSetProperty = ($config['translationChangeSet'] ?? null)) {
-            $reflectionProperty = $meta->getReflectionClass()->getProperty($changeSetProperty);
-            if (!$reflectionProperty) {
-                throw new \Gedmo\Exception\RuntimeException("There is no property ({$changeSetProperty}) to hold the original change-set of the translated fields for object: {$meta->name}");
-            }
-            $translationChangeSet = array_intersect_key($changeSet, array_flip($config['fields']));
-            $reflectionProperty->setAccessible(true);
-            $reflectionProperty->setValue($object, $translationChangeSet);
-        }
-    }
-
-    /**
      * After object is loaded, listener updates the translations
      * by currently used locale
      *
-     * @param ManagerEventArgs $args
+     * @param LifecycleEventArgs $args
      *
-     * @phpstan-param ManagerEventArgs<ObjectManager> $args
+     * @phpstan-param LifecycleEventArgs<ObjectManager> $args
      *
      * @return void
      */
@@ -612,7 +591,13 @@ class TranslatableListener extends MappedEventSubscriber
         $om = $ea->getObjectManager();
         $object = $ea->getObject();
         $meta = $om->getClassMetadata(get_class($object));
-        if (!$this->postProcessHydrator) {
+        $pending = $this->hydratedTranslations[$om] ?? null;
+        $hydration = $pending[$object] ?? null;
+        $hydratedTranslations = $hydration['fields'] ?? null;
+        if (null !== $pending) {
+            unset($pending[$object]);
+        }
+        if (null === $hydratedTranslations) {
             $config = $this->getObjectConfiguration($object, $om, $meta->getName());
         } else {
             $config = $this->getConfiguration($om, $meta->getName());
@@ -626,8 +611,8 @@ class TranslatableListener extends MappedEventSubscriber
             $this->translatedInLocale[$oid] = $locale;
         }
 
-        if (isset($config['fields']) && ($locale !== $this->defaultLocale || $this->persistDefaultLocaleTranslation)) {
-            if (!$this->postProcessHydrator) {
+        if (isset($config['fields']) && (null !== $hydratedTranslations || $locale !== $this->defaultLocale || $this->persistDefaultLocaleTranslation)) {
+            if (null === $hydratedTranslations) {
                 // fetch translations
                 $translationClass = $this->getTranslationClass($ea, $config['useObjectClass']);
                 $result = $ea->loadTranslations(
@@ -640,9 +625,13 @@ class TranslatableListener extends MappedEventSubscriber
 
             // translate object's translatable properties
             foreach ($config['fields'] as $field) {
+                if (null !== $hydratedTranslations && !array_key_exists($field, $hydratedTranslations)) {
+                    continue;
+                }
+
                 $translated = $this->defaultTranslationValue;
 
-                if (!$this->postProcessHydrator) {
+                if (null === $hydratedTranslations) {
                     foreach ($result as $entry) {
                         if ($entry['field'] == $field) {
                             $translated = $entry['content'] ?? null;
@@ -654,39 +643,24 @@ class TranslatableListener extends MappedEventSubscriber
 
                 $originalValue = $meta->getFieldValue($object, $field);
 
-                if ($this->postProcessHydrator) {
-                    // object hydrator provides translated and untranslated properties as JSON data.
-                    list('translated' => $translated, 'untranslated' => $originalValue) = json_decode($originalValue, true);
-
-                    // install $originalValue as current object value
-                    // the following also converts to "PHP" value, as opposed to just using refl->setValue()
-                    $originalValue = $ea->setTranslationValue($object, $field, $originalValue);
-
-                    // install $originalValue as original changeset value
-                    $ea->setOriginalObjectProperty(
-                      $om->getUnitOfWork(),
-                      $object,
-                      $field,
-                      $originalValue
-                    );
-
-                    if (array_search($field, $objectConfig['fields']) === false) {
-                        continue; // just restore the original property and skip the rest of this code
+                if (null !== $hydratedTranslations) {
+                    $translated = $hydratedTranslations[$field];
+                    if (!in_array($field, $objectConfig['fields'], true)) {
+                        continue;
                     }
                 }
 
                 // if requested install the original object property into the given PHP field.
                 $this->setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config);
 
-                $doFallback = ((!isset($config['fallback'][$field]) && $this->translationFallback)
-                               ||
-                               (isset($config['fallback'][$field]) && $config['fallback'][$field]));
+                $doFallback = ((!isset($config['fallback'][$field]) && ($hydration['fallback'] ?? $this->translationFallback))
+                               || (isset($config['fallback'][$field]) && $config['fallback'][$field]));
 
                 $cleanChangeSet = true;
                 if ($doFallback) {
-                    if (empty($originalValue)) {
+                    if (null === $originalValue || '' === $originalValue) {
                         $this->missingInDefaultLocale[$oid][$field] = true;
-                    } else if (empty($translated) || $translated == $originalValue) {
+                    } elseif (null === $translated || '' === $translated || $translated == $originalValue) {
                         $translated = $this->getFallbackTranslation($originalValue);
                         $cleanChangeSet = false;
                     }
@@ -726,14 +700,6 @@ class TranslatableListener extends MappedEventSubscriber
     }
 
     /**
-     * @return bool
-     */
-    public function isPostProcessHydrator()
-    {
-        return $this->postProcessHydrator;
-    }
-
-    /**
      * Check if object has any translation object which represents translation in default language.
      * This is for internal use only.
      *
@@ -755,10 +721,10 @@ class TranslatableListener extends MappedEventSubscriber
      * translation. The fallback translations will be stored in the
      * data-base on flush.
      *
-     * @param string $originalValue Stored value from untranslated
-     *   entity property.
+     * @param string $originalValue stored value from untranslated
+     *                              entity property
      *
-     * @return null|string The translated value in the current locale.
+     * @return string|null the translated value in the current locale
      *
      * @note Applications can derive from TranslatableListener and
      * override this method to their liking.
@@ -774,10 +740,10 @@ class TranslatableListener extends MappedEventSubscriber
      * locale. If null is returned just the original (wrong) value of
      * the current locale is persistet.
      *
-     * @param string $translatedValue Translated value in the current
-     * locale.
+     * @param string $translatedValue translated value in the current
+     *                                locale
      *
-     * @return null|string The back-translated value or null.
+     * @return string|null the back-translated value or null
      *
      * @note Applications can derive from TranslatableListener and
      * override this method to their liking.
@@ -805,6 +771,50 @@ class TranslatableListener extends MappedEventSubscriber
     {
         if (!$this->isValidLocale($locale)) {
             throw new InvalidArgumentException('Locale or language cannot be empty and must be set through Listener or Entity');
+        }
+    }
+
+    /**
+     * If requested install the original object property into the given PHP field.
+     *
+     * @todo: perhaps easier and more efficient to use a database generated
+     * column which simply duplicates the original value.
+     */
+    private function setUntranslatedPropertyValue($object, $field, $originalValue, $meta, $config)
+    {
+        if (isset($config['untranslated'][$field])) {
+            $untranslatedProperty = $config['untranslated'][$field];
+            $reflectionProperty = $meta->getReflectionClass()->getProperty($untranslatedProperty);
+            if (!$reflectionProperty) {
+                throw new RuntimeException("There is no property ({$untranslatedProperty}) to hold the untranslated original value of property ({$field}) on object: {$meta->name}");
+            }
+            if (PHP_VERSION_ID < 80100) {
+                $reflectionProperty->setAccessible(true);
+            }
+            $reflectionProperty->setValue($object, $originalValue);
+        }
+    }
+
+    /**
+     * If request record the original pre-change TRANSLATED property. The
+     * problem is here the we need to reset the changeset of the original
+     * entity. This, however, make the original translated values unavailable
+     * in the preUpdate handlers. So before doing any tweaks we just record
+     * the changeset if this is requested by the OriginalValues annotation.
+     */
+    private function recordTranslationChangeSet($object, $changeSet, $meta, $config)
+    {
+        // if requested install the original object property into the given PHP field.
+        if ($changeSetProperty = ($config['translationChangeSet'] ?? null)) {
+            $reflectionProperty = $meta->getReflectionClass()->getProperty($changeSetProperty);
+            if (!$reflectionProperty) {
+                throw new RuntimeException("There is no property ({$changeSetProperty}) to hold the original change-set of the translated fields for object: {$meta->name}");
+            }
+            $translationChangeSet = array_intersect_key($changeSet, array_flip($config['fields']));
+            if (PHP_VERSION_ID < 80100) {
+                $reflectionProperty->setAccessible(true);
+            }
+            $reflectionProperty->setValue($object, $translationChangeSet);
         }
     }
 
@@ -956,7 +966,7 @@ class TranslatableListener extends MappedEventSubscriber
                 } else {
                     $defaultValue = $this->getFallbackUntranslation($translatedValue);
                 }
-                if ($defaultValue !== null) {
+                if (null !== $defaultValue) {
                     $this->preFlushBackup[$ea->getRootObjectClass($meta)][$oid][$field] = $translatedValue;
                     $wrapped->setPropertyValue($field, $defaultValue);
                     $ea->recomputeSingleObjectChangeset($uow, $meta, $object);
@@ -966,7 +976,7 @@ class TranslatableListener extends MappedEventSubscriber
                     $untranslated = null; // failed to get a real untranslation
                 }
 
-                if ($untranslated !== null) {
+                if (null !== $untranslated) {
                     // if requested install the original object property into the given PHP field.
                     $this->setUntranslatedPropertyValue($object, $field, $untranslated, $meta, $config);
                 }
@@ -976,12 +986,10 @@ class TranslatableListener extends MappedEventSubscriber
         $this->translatedInLocale[$oid] = $locale;
         // check if we have default translation and need to reset the translation
         if (!$isInsert && $this->isValidlocale($this->defaultLocale)) {
-
             // cleanup current changeset only if working in a another locale
             // different than de default one, otherwise the changeset would
             // always be reverted
             if ($locale !== $this->defaultLocale) {
-
                 $modifiedChangeSet = $changeSet;
                 foreach ($modifiedChangeSet as $field => $changes) {
                     if (in_array($field, $translatableFields, true)) {
@@ -1002,7 +1010,7 @@ class TranslatableListener extends MappedEventSubscriber
                         if ($this->hasTranslationsInDefaultLocale($oid)) {
                             $defaultValue = $this->getTranslationInDefaultLocale($oid, $field)->getContent();
                             $this->removeTranslationInDefaultLocale($oid, $field);
-                        } else if (!empty($this->missingInDefaultLocale[$oid][$field])) {
+                        } elseif (!empty($this->missingInDefaultLocale[$oid][$field])) {
                             $translatedValue = $changeSet[$field][1] ?? $wrapped->getPropertyValue($field);
                             if (!empty($translatedValue)) {
                                 $defaultValue = $this->getFallbackUntranslation($translatedValue);
@@ -1061,13 +1069,8 @@ class TranslatableListener extends MappedEventSubscriber
 
     /**
      * Checks if the translation entity belongs to the object in question
-     *
-     * @param object $trans
-     * @param WrapperInterface $wrapped
-     *
-     * @return bool
      */
-    private function belongsToObject(TranslatableAdapter $ea, object $trans, WrapperInterface $wrapped):bool
+    private function belongsToObject(TranslatableAdapter $ea, object $trans, WrapperInterface $wrapped): bool
     {
         if ($ea->usesPersonalTranslation(get_class($trans))) {
             return $trans->getObject() === $wrapped->getObject();
