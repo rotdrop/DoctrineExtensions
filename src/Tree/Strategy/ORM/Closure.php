@@ -592,6 +592,7 @@ class Closure implements Strategy
         }
 
         foreach ($closureMetadata->table['uniqueConstraints'] as $uniqueConstraint) {
+            /** @var array{columns?: list<string>} $uniqueConstraint */
             if ([] === array_diff(['ancestor', 'descendant'], $uniqueConstraint['columns'])) {
                 return true;
             }
@@ -610,6 +611,7 @@ class Closure implements Strategy
         }
 
         foreach ($closureMetadata->table['indexes'] as $uniqueConstraint) {
+            /** @var array{columns?: list<string>} $uniqueConstraint */
             if ([] === array_diff(['depth'], $uniqueConstraint['columns'])) {
                 return true;
             }
