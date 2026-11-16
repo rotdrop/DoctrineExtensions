@@ -22,6 +22,9 @@ a release.
 ### Changed
 - Tool: `WrapperInterface::getIdentifier()` implementations must accept the optional boolean `$flatten` argument.
 
+### Fixed
+- Tracking listeners: Restore missing create values on flush and correctly update association targets.
+
 ## [3.22.2] - 2026-09-29
 ### Fixed
 - SoftDeleteable: Resolve the event manager listeners from the object manager to support `doctrine/persistence` >= 4.0 and

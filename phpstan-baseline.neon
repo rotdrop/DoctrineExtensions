@@ -7,12 +7,6 @@ parameters:
 			path: src/AbstractTrackingListener.php
 
 		-
-			message: '#^Call to an undefined method Doctrine\\Persistence\\Mapping\\ClassMetadata\<object\>\:\:setFieldValue\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: src/AbstractTrackingListener.php
-
-		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\ObjectManager\:\:getUnitOfWork\(\)\.$#'
 			identifier: method.notFound
 			count: 3
