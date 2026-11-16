@@ -22,8 +22,6 @@ use Gedmo\Mapping\Annotation as Gedmo;
 trait BlameableEntity
 {
     /**
-     * @var string
-     *
      * @Gedmo\Blameable(on="create")
      *
      * @ORM\Column(nullable=true)
@@ -33,8 +31,6 @@ trait BlameableEntity
     protected ?string $createdBy = null;
 
     /**
-     * @var string
-     *
      * @Gedmo\Blameable(on="update")
      *
      * @ORM\Column(nullable=true)
