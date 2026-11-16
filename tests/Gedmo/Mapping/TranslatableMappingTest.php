@@ -79,7 +79,11 @@ final class TranslatableMappingTest extends ORMMappingTestCase
         static::assertSame('password', $config['fields'][0]);
         static::assertSame('username', $config['fields'][1]);
         static::assertArrayHasKey('locale', $config);
-        static::assertSame('localeField', $config['locale']);
+        if (AnnotatedUser::class === $className) {
+            static::assertSame(['field' => 'localeField', 'initialize' => false], $config['locale']);
+        } else {
+            static::assertSame('localeField', $config['locale']);
+        }
         static::assertCount(1, $config['fallback']);
         static::assertTrue($config['fallback']['company']);
     }
