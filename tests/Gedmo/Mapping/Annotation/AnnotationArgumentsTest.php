@@ -14,6 +14,7 @@ namespace Gedmo\Tests\Mapping\Annotation;
 use Doctrine\Deprecations\PHPUnit\VerifyDeprecations;
 use Gedmo\Mapping\Annotation\Annotation;
 use Gedmo\Mapping\Annotation\Blameable;
+use Gedmo\Mapping\Annotation\Timestampable;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -44,6 +45,18 @@ final class AnnotationArgumentsTest extends TestCase
         foreach ($expected as $attribute => $value) {
             static::assertSame($value, $annotation->$attribute);
         }
+    }
+
+    public function testTimestampableLegacyArgumentsAndOverrides(): void
+    {
+        $this->expectDeprecationWithIdentifier('https://github.com/doctrine-extensions/DoctrineExtensions/pull/2325');
+
+        $legacy = new Timestampable(['on' => 'delete', 'timestampField' => 'deletedAt']);
+        static::assertSame('delete', $legacy->on);
+        static::assertSame('deletedAt', $legacy->timestampField);
+
+        $override = new Timestampable(['timestampField' => 'deletedAt'], 'update', null, null, 'updatedAt');
+        static::assertSame('updatedAt', $override->timestampField);
     }
 
     /**

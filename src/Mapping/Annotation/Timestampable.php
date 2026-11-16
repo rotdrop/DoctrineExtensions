@@ -31,17 +31,21 @@ final class Timestampable implements GedmoAnnotation
 
     /** @var string|string[] */
     public $on = 'update';
-    /** @var string|string[] */
+    /** @var string|string[]|null */
     public $field;
     /** @var mixed */
     public $value;
+    /** @var string|null */
+    public $timestampField;
 
     /**
      * @param array<string, mixed> $data
-     * @param string|string[]      $field
+     * @param string|string[]      $on
+     * @param string|string[]|null $field
      * @param mixed                $value
+     * @param string|null          $timestampField
      */
-    public function __construct(array $data = [], $on = 'update', $field = null, $value = null)
+    public function __construct(array $data = [], $on = 'update', $field = null, $value = null, $timestampField = null)
     {
         if ([] !== $data) {
             Deprecation::trigger(
@@ -56,6 +60,7 @@ final class Timestampable implements GedmoAnnotation
             $this->on = $this->getAttributeValue($data, 'on', $args, 1, $on);
             $this->field = $this->getAttributeValue($data, 'field', $args, 2, $field);
             $this->value = $this->getAttributeValue($data, 'value', $args, 3, $value);
+            $this->timestampField = $this->getAttributeValue($data, 'timestampField', $args, 4, $timestampField);
 
             return;
         }
@@ -63,5 +68,6 @@ final class Timestampable implements GedmoAnnotation
         $this->on = $on;
         $this->field = $field;
         $this->value = $value;
+        $this->timestampField = $timestampField;
     }
 }
