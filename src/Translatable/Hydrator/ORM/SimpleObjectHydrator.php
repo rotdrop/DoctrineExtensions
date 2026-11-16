@@ -46,7 +46,7 @@ class SimpleObjectHydrator extends BaseSimpleObjectHydrator
         parent::prepare();
     }
 
-    protected function hydrateRowData(array $row, array &$result)
+    protected function hydrateRow(array $row)
     {
         foreach (array_keys($row) as $key) {
             if (str_starts_with($key, TranslationWalker::UNTRANSLATED_FIELD_PREFIX)) {
@@ -54,7 +54,7 @@ class SimpleObjectHydrator extends BaseSimpleObjectHydrator
                 $row[$baseKey] = json_encode([ 'translated' => $row[$baseKey], 'untranslated' => $row[$key] ]);
             }
         }
-        parent::hydrateRowData($row, $result);
+        parent::hydrateRow($row);
     }
 
     /**
