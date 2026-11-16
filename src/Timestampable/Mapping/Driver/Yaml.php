@@ -69,6 +69,10 @@ class Yaml extends File implements Driver
                         throw new InvalidMappingException("Field - [{$field}] trigger 'on' is not one of [update, create, change] in class - {$meta->getName()}");
                     }
 
+                    $options = [
+                        'field' => $field,
+                        'targetProperty' => null,
+                    ];
                     if ('change' === $mappingProperty['on']) {
                         if (!isset($mappingProperty['field'])) {
                             throw new InvalidMappingException("Missing parameters on property - {$field}, field must be set on [change] trigger in class - {$meta->getName()}");
@@ -78,13 +82,10 @@ class Yaml extends File implements Driver
                         if (is_array($trackedFieldAttribute) && null !== $valueAttribute) {
                             throw new InvalidMappingException('Timestampable extension does not support multiple value changeset detection yet.');
                         }
-                        $field = [
-                            'field' => $field,
-                            'trackedField' => $trackedFieldAttribute,
-                            'value' => $valueAttribute,
-                        ];
+                        $options['trackedField'] = $trackedFieldAttribute;
+                        $options['value'] = $valueAttribute;
                     }
-                    $config[$mappingProperty['on']][] = $field;
+                    $config[$mappingProperty['on']][] = $options;
                 }
             }
         }
