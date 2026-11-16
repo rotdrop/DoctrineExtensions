@@ -35,7 +35,7 @@ final class SoftDeleteable implements GedmoAnnotation
 
     /**
      * @var bool|string
-     * The "decider" which determines if hard-deletion is allowed.
+     *                  The "decider" which determines if hard-deletion is allowed.
      *
      * - an entity method returning a boolean. If the return value is
      *   true then hard-deletion is allowed.
