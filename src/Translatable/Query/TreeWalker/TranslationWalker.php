@@ -495,6 +495,8 @@ class TranslationWalker extends SqlOutputWalker
     /**
      * Replaces given sql $str with required
      * results
+     *
+     * @param array<string, string> $repl
      */
     private function replaceSelect(array $repl, string $str): string
     {

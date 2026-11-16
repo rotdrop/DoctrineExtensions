@@ -18,6 +18,7 @@ use Gedmo\Mapping\Annotation\Annotation as GedmoAnnotation;
  * @Annotation
  *
  * @NamedArgumentConstructor
+ *
  * @Target("PROPERTY")
  *
  * @author Gediminas Morkevicius <gediminas.morkevicius@gmail.com>
@@ -28,6 +29,9 @@ final class Locale implements GedmoAnnotation
     /** @var bool|null */
     public $initialize;
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function __construct(array $data = [], ?bool $initialize = null)
     {
         if ([] !== $data) {

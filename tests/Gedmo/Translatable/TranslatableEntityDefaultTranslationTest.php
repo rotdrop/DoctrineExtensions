@@ -201,6 +201,44 @@ final class TranslatableEntityDefaultTranslationTest extends BaseTestCaseORM
         static::assertSame('update title defaultLocale', $fields[0]['title']);
     }
 
+    public function testMissingDefaultValueIsUpdatedWhenAnotherTranslatedFieldChanges(): void
+    {
+        $listener = new class extends TranslatableListener { // @phpstan-ignore class.extendsFinalByPhpDoc (The fallback hook remains overridable for existing applications.)
+            public bool $untranslate = false;
+
+            protected function getFallbackUntranslation($translatedValue)
+            {
+                return $this->untranslate ? 'default: '.$translatedValue : null;
+            }
+        };
+        $listener->setDefaultLocale('defaultLocale');
+        $listener->setTranslatableLocale('defaultLocale');
+        $listener->setTranslationFallback(true);
+        $evm = new EventManager();
+        $evm->addEventSubscriber($listener);
+        $this->getDefaultMockSqliteEntityManager($evm);
+
+        $entity = new Article();
+        $entity->setTitle('title');
+        $entity->setAuthor('author');
+        $this->em->persist($entity);
+        $this->em->flush();
+        $id = $entity->getId();
+        $this->em->clear();
+
+        $listener->untranslate = true;
+        $listener->setTranslatableLocale('translatedLocale');
+        $entity = $this->em->find(Article::class, $id);
+        $entity->setContent('translated content');
+        $entity->setAuthor('translated author');
+        $this->em->flush();
+
+        $rows = $this->em->createQuery('SELECT a FROM '.Article::class.' a')->getArrayResult();
+        static::assertSame('default: translated content', $rows[0]['content']);
+        static::assertSame('author', $rows[0]['author']);
+        static::assertSame('translated content', $entity->getContent());
+    }
+
     /**
      * As this test does not provide a default translation, we assert
      * that a translated value is picked as default value

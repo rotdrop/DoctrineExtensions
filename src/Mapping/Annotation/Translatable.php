@@ -36,7 +36,7 @@ final class Translatable implements GedmoAnnotation
      * @var string|null
      *
      * Optional name of a property for storing the untranslated value as
-     * stored in the data-base table.
+     * stored in the data-base table
      */
     public $untranslated;
 
