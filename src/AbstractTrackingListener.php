@@ -110,12 +110,14 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                         $changedObjects = array_merge($changedObjects, $changes);
                     }
                 }
+
                 continue; // nothing further if object is about to be deleted
             }
 
             $changeSet = $ea->getObjectChangeSet($uow, $object);
             if ($uow->isScheduledForInsert($object) && isset($config['create'])) {
                 foreach ($config['create'] as $field) {
+                    $targetProperty = null;
                     if (is_array($field)) {
                         $options = $field;
                         $field = $options['field'];
@@ -124,7 +126,8 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                     // Field may not exist in change set, i.e. when persisting an embedded object without a parent
                     // If we have a target-property, then always update
                     $doUpdate = !empty($targetProperty)
-                        || (null === array_key_exists($field, $changeSet) ? $changeSet[$field][1] : false);
+                        || !array_key_exists($field, $changeSet)
+                        || null === $changeSet[$field][1];
                     if ($doUpdate) { // let manual values
                         $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty ?? null);
                         $changedObjects = array_merge($changedObjects, $changes);
@@ -134,6 +137,7 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
 
             if (isset($config['update'])) {
                 foreach ($config['update'] as $field) {
+                    $targetProperty = null;
                     if (is_array($field)) {
                         $options = $field;
                         $field = $options['field'];
@@ -203,7 +207,7 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                             }
                         } elseif ($meta->hasAssociation($tracked)
                                   && !$meta->isSingleValuedAssociation($tracked)
-                                  && $meta->getPropertyAccessor($tracked)->getValue($object)->isDirty()) {
+                                  && AbstractWrapper::wrap($object, $om)->getPropertyValue($tracked)->isDirty()) {
                             // The owning-side of MANY_TO_MANY will be
                             // included in the scheduled-for-update set, but
                             // the changeset of the corresponding field will
@@ -219,6 +223,7 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
                                 throw new UnexpectedValueException("Field - [{$tracked}] is a multivalued association, cannot detect changeset values.");
                             }
                             $changes = $this->updateField($object, $ea, $meta, $field, $targetProperty);
+                            $changedObjects = array_merge($changedObjects, $changes);
                         }
                     }
                 }
@@ -249,6 +254,7 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
         if ($config) {
             if (isset($config['update'])) {
                 foreach ($config['update'] as $field) {
+                    $targetProperty = null;
                     if (is_array($field)) {
                         $options = $field;
                         $field = $options['field'];
@@ -261,6 +267,7 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
             }
             if (isset($config['create'])) {
                 foreach ($config['create'] as $field) {
+                    $targetProperty = null;
                     if (is_array($field)) {
                         $options = $field;
                         $field = $options['field'];
@@ -292,9 +299,9 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
      * @param TEventAdapter         $eventAdapter
      * @param ClassMetadata<object> $meta
      * @param string                $field
-     * @param string                $targetField
+     * @param string|null           $targetField
      *
-     * @return array
+     * @return array<string, array{object: object, meta: ClassMetadata<object>}>
      */
     protected function updateField($object, $eventAdapter, $meta, $field, $targetField)
     {
@@ -306,49 +313,49 @@ abstract class AbstractTrackingListener extends MappedEventSubscriber
             $targetField = $field;
             $targetObject = $object;
             $targetMeta = $meta;
-        }
-
-        if ($meta->hasAssociation($field)) {
-            $targetEntityClass = $meta->associationMappings[$field]['targetEntity'];
-            if (!empty($targetField)) {
-                $targetMeta = $om->getClassMetadata($targetEntityClass);
-                $newValue = $this->getFieldValue($targetMeta, $targetField, $eventAdapter);
-                $targetObject = $meta->getFieldValue($object, $field);
-            } else {
-                if (($newValue instanceof $targetEntityClass) && !$om->contains($newValue)) {
-                    // Check to persist only when the object isn't already managed, always persists for MongoDB
-                    if (!($uow instanceof UnitOfWork) || UnitOfWork::STATE_MANAGED !== $uow->getEntityState($newValue)) {
-                        $om->persist($newValue);
-                    }
+            if ($meta->hasAssociation($field)) {
+                $targetEntityClass = $meta->getAssociationTargetClass($field);
+                if (null !== $targetEntityClass && $newValue instanceof $targetEntityClass && !$om->contains($newValue)
+                    && (!($uow instanceof UnitOfWork) || UnitOfWork::STATE_MANAGED !== $uow->getEntityState($newValue))) {
+                    $om->persist($newValue);
                 }
             }
+        } else {
+            $targetEntityClass = $meta->getAssociationTargetClass($field);
+            if (null === $targetEntityClass) {
+                throw new UnexpectedValueException("Field - [{$field}] has no target association class in {$meta->getName()}");
+            }
+            $targetMeta = $om->getClassMetadata($targetEntityClass);
+            $newValue = $this->getFieldValue($targetMeta, $targetField, $eventAdapter);
+            $targetObject = $meta->getFieldValue($object, $field);
         }
 
-        if (!$meta->hasAssociation($field) || $meta->isSingleValuedAssociation($field)) {
-            $collection = empty($targetObject) ? [] : [ $targetObject ];
+        if ($targetObject === $object || !$meta->hasAssociation($field) || $meta->isSingleValuedAssociation($field)) {
+            $collection = empty($targetObject) ? [] : [$targetObject];
         } else {
             $collection = $targetObject;
         }
 
         $changed = [];
         foreach ($collection as $targetObject) {
-            if ($uow->getEntityState($targetObject) == UnitOfWork::STATE_REMOVED) {
+            if (UnitOfWork::STATE_REMOVED == $eventAdapter->getObjectState($uow, $targetObject)) {
                 continue;
             }
             $wrappedTarget = AbstractWrapper::wrap($targetObject, $om);
-            if ($uow->getEntityState($targetObject) == UnitOfWork::STATE_MANAGED) {
+            $isManaged = UnitOfWork::STATE_MANAGED == $eventAdapter->getObjectState($uow, $targetObject);
+            $oldValue = null;
+            if ($isManaged || $targetObject instanceof NotifyPropertyChanged) {
                 $oldValue = $wrappedTarget->getPropertyValue($targetField);
+            }
+            if ($isManaged) {
                 $eventAdapter->setOriginalObjectProperty($uow, $targetObject, $targetField, $oldValue);
             }
             $wrappedTarget->setPropertyValue($targetField, $newValue);
             if ($targetObject instanceof NotifyPropertyChanged) {
-                if (empty($oldValue)) {
-                    $oldValue = $wrappedTarget->getPropertyValue($targetField);
-                }
                 $uow = $eventAdapter->getObjectManager()->getUnitOfWork();
                 $uow->propertyChanged($targetObject, $targetField, $oldValue, $newValue);
             }
-            $changed[spl_object_hash($targetObject)] = [ 'object' => $targetObject, 'meta' => $targetMeta ];
+            $changed[spl_object_hash($targetObject)] = ['object' => $targetObject, 'meta' => $targetMeta];
         }
 
         // return changes in order to be able to recompute change-sets.
