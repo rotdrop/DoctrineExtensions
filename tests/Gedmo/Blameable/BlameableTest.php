@@ -13,6 +13,7 @@ namespace Gedmo\Tests\Blameable;
 
 use Doctrine\Common\EventManager;
 use Gedmo\Blameable\BlameableListener;
+use Gedmo\Blameable\Mapping\Event\Adapter\ORM;
 use Gedmo\Tests\Blameable\Fixture\Entity\Article;
 use Gedmo\Tests\Blameable\Fixture\Entity\Comment;
 use Gedmo\Tests\Blameable\Fixture\Entity\Type;
@@ -155,6 +156,43 @@ final class BlameableTest extends BaseTestCaseORM
 
         $sport = $repo->findOneBy(['title' => 'sport forced']);
         static::assertSame('myuser', $sport->getPublished());
+    }
+
+    public function testCreateFieldClearedAfterPersistIsRestoredOnFlush(): void
+    {
+        $article = new Article();
+        $article->setTitle('created on flush');
+        $this->em->persist($article);
+        $article->setCreated(null);
+        $this->em->flush();
+        $this->em->clear();
+
+        $article = $this->em->getRepository(Article::class)->findOneBy(['title' => 'created on flush']);
+        static::assertSame('testuser', $article->getCreated());
+    }
+
+    public function testAssociationAndTargetFieldUpdates(): void
+    {
+        $listener = new class extends BlameableListener { // @phpstan-ignore class.extendsFinalByPhpDoc (Exercise the inherited protected update hook.)
+            public function updateArticle(Article $article, ORM $adapter, ?string $targetField): void
+            {
+                $this->updateField($article, $adapter, $adapter->getObjectManager()->getClassMetadata(Article::class), 'type', $targetField);
+            }
+        };
+        $adapter = new ORM();
+        $adapter->setEntityManager($this->em);
+        $article = new Article();
+        $type = new Type();
+        $type->setTitle('original');
+
+        $listener->setUserValue($type);
+        $listener->updateArticle($article, $adapter, null);
+        static::assertTrue($this->em->contains($type));
+        static::assertSame($type, $this->em->getClassMetadata(Article::class)->getFieldValue($article, 'type'));
+
+        $listener->setUserValue('updated');
+        $listener->updateArticle($article, $adapter, 'title');
+        static::assertSame('updated', $type->getTitle());
     }
 
     protected function getUsedEntityFixtures(): array
