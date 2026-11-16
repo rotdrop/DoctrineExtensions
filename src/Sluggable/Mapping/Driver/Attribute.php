@@ -164,8 +164,11 @@ class Attribute extends AbstractAnnotationDriver
         $handlers = $this->getSlugHandlers($property, $slug, $meta);
 
         // process slug fields
-        if (/* [] === $slug->fields || */!is_array($slug->fields)) {
+        if (!is_array($slug->fields)) {
             throw new InvalidMappingException("Slug must contain at least one field for slug generation in class - {$meta->getName()}");
+        }
+        if ([] === $slug->fields && [] === $handlers) {
+            throw new InvalidMappingException("Slug must contain at least one field or a slug handler for slug generation in class - {$meta->getName()}");
         }
 
         foreach ($slug->fields as $slugField) {

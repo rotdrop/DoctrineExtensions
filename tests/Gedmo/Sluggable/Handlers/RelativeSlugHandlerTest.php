@@ -15,6 +15,7 @@ use Doctrine\Common\EventManager;
 use Gedmo\Sluggable\SluggableListener;
 use Gedmo\Tests\Sluggable\Fixture\Handler\Article;
 use Gedmo\Tests\Sluggable\Fixture\Handler\ArticleRelativeSlug;
+use Gedmo\Tests\Sluggable\Fixture\Handler\HandlerOnlySlug;
 use Gedmo\Tests\Tool\BaseTestCaseORM;
 
 /**
@@ -50,6 +51,22 @@ final class RelativeSlugHandlerTest extends BaseTestCaseORM
 
         $single = $repo->findOneBy(['title' => 'Single']);
         static::assertSame('single', $single->getSlug());
+    }
+
+    public function testSlugGeneratedWithoutScalarFields(): void
+    {
+        $article = new Article();
+        $article->setTitle('Sport');
+        $article->setCode('test');
+        $this->em->persist($article);
+        $this->em->flush();
+
+        $relative = new HandlerOnlySlug();
+        $relative->article = $article;
+        $this->em->persist($relative);
+        $this->em->flush();
+
+        static::assertSame('sport-test', $relative->slug);
     }
 
     public function testUpdateOperations(): void
@@ -89,6 +106,7 @@ final class RelativeSlugHandlerTest extends BaseTestCaseORM
         return [
             ArticleRelativeSlug::class,
             Article::class,
+            HandlerOnlySlug::class,
         ];
     }
 
