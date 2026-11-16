@@ -269,7 +269,7 @@ echo $article->getSlug();
 
 ### Some other configuration options for **slug** annotation and attribute:
 
-- **fields** (required, default=[]) - list of fields for slug
+- **fields** (required unless a slug handler is configured, default=[]) - list of fields for slug
 - **updatable** (optional, default=true) - **true** to update the slug on sluggable field changes, **false** - otherwise
 - **unique** (optional, default=true) - **true** if slug should be unique and if identical it will be suffixed, **false** - otherwise
 - **unique_base** (optional, default=null) - used in conjunction with **unique**. The name of the entity property that should be used as a key when doing a uniqueness check.
@@ -280,7 +280,8 @@ echo $article->getSlug();
 - **handlers** (only available in annotations, optional, default=[]) - list of slug handlers, like tree path slug, or customized, for example see bellow
 - **uniqueOverTranslations** (optional, default=false) - **true** if slug should be unique over translations and if identical it will be suffixed, **false** - otherwise
 
-**Note**: handlers are totally optional
+**Note**: handlers are optional unless the fields array is empty. With attribute mapping, a handler can generate
+the entire slug from associations without any scalar source fields.
 
 When using attributes, SlugHandlers are defined directly at property level and their options are passed as an array
 instead of `SlugHandlerOption`.

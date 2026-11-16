@@ -250,7 +250,7 @@ final class SluggableTest extends BaseTestCaseORM
 
         $this->expectException(InvalidMappingException::class);
         $this->expectExceptionMessage(\sprintf(
-            'Slug must contain at least one field for slug generation in class - %s',
+            'Slug must contain at least one field or a slug handler for slug generation in class - %s',
             ArticleWithoutFields::class
         ));
 

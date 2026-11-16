@@ -34,11 +34,11 @@ interface SlugHandlerInterface
      * Hook on slug handlers before the decision is made whether
      * the slug needs to be recalculated.
      *
-     * @param array<string, mixed> $config
-     * @param object               $object
-     * @param string               $slug
-     * @param bool                 $needToChangeSlug
-     * @param array                $otherSlugs Array with old and newly generated slug
+     * @param array<string, mixed>                 $config
+     * @param object                               $object
+     * @param string                               $slug
+     * @param bool                                 $needToChangeSlug
+     * @param array{old: string|null, new: string} $otherSlugs       Array with old and newly generated slug
      *
      * @phpstan-param SlugConfiguration $config
      *
