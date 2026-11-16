@@ -9,12 +9,12 @@
 
 namespace Gedmo\Translatable\Mapping\Driver;
 
-use Doctrine\ODM\MongoDB\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\EmbeddedClassMapping;
 use Gedmo\Exception\InvalidMappingException;
 use Gedmo\Mapping\Annotation\Language;
 use Gedmo\Mapping\Annotation\Locale;
 use Gedmo\Mapping\Annotation\Translatable;
+use Gedmo\Mapping\Annotation\TranslationChangeSet;
 use Gedmo\Mapping\Annotation\TranslationEntity;
 use Gedmo\Mapping\Driver\AbstractAnnotationDriver;
 
@@ -169,12 +169,6 @@ class Attribute extends AbstractAnnotationDriver
                         }
                     }
                 }
-            }
-        }
-
-        if (!$meta->isMappedSuperclass && $config) {
-            if ($meta instanceof ClassMetadata && is_array($meta->identifier) && count($meta->identifier) > 1) {
-                throw new InvalidMappingException("Translatable does not support composite identifiers in class - {$meta->name}");
             }
         }
 
