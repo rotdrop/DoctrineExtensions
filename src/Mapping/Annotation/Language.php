@@ -27,6 +27,9 @@ final class Language implements GedmoAnnotation
     /** @var bool|null */
     public $initialize;
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function __construct(array $data = [], ?bool $initialize = null)
     {
         if ([] !== $data) {

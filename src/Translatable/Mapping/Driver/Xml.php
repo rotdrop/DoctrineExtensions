@@ -78,12 +78,6 @@ class Xml extends BaseXml
 
         $config = $this->inspectElementsForTranslatableFields($xmlDoctrine, $config);
 
-        if (!$meta->isMappedSuperclass && $config) {
-            if (is_array($meta->getIdentifier()) && count($meta->getIdentifier()) > 1) {
-                throw new InvalidMappingException("Translatable does not support composite identifiers in class - {$meta->getName()}");
-            }
-        }
-
         return $config;
     }
 

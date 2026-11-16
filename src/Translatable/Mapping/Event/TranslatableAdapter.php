@@ -64,7 +64,7 @@ interface TranslatableAdapter extends AdapterInterface
      * @param string $translationClass
      * @param string $objectClass
      *
-     * @phpstan-param AbstractWrapper<ClassMetadata<object>, object, ObjectManager> $wrapped
+     * @phpstan-param AbstractWrapper<covariant ClassMetadata<object>, object, covariant ObjectManager> $wrapped
      * @phpstan-param class-string $translationClass
      * @phpstan-param class-string $objectClass
      *

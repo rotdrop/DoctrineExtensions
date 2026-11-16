@@ -33,7 +33,7 @@ final class TranslationEntity implements GedmoAnnotation
     public string $class;
 
     /**
-     * @var array
+     * @var array<string, string>
      *
      * Mapping of "complicated" columns to strings. This can be used by the
      * tree-walker where the type-to-php-value conversion cannot be used. The
@@ -45,7 +45,8 @@ final class TranslationEntity implements GedmoAnnotation
     public $idToString;
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<string, mixed>  $data
+     * @param array<string, string> $idToString
      */
     public function __construct(array $data = [], string $class = '', array $idToString = [])
     {

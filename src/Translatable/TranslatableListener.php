@@ -11,6 +11,7 @@ namespace Gedmo\Translatable;
 
 use Doctrine\Common\EventArgs;
 use Doctrine\ODM\MongoDB\DocumentManager;
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMInvalidArgumentException;
 use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
@@ -21,7 +22,8 @@ use Gedmo\Exception\InvalidArgumentException;
 use Gedmo\Exception\RuntimeException;
 use Gedmo\Mapping\MappedEventSubscriber;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
-use Gedmo\Tool\WrapperInterface;
+use Gedmo\Tool\Wrapper\EntityWrapper;
+use Gedmo\Tool\Wrapper\MongoDocumentWrapper;
 use Gedmo\Translatable\Mapping\Event\TranslatableAdapter;
 
 /**
@@ -41,8 +43,10 @@ use Gedmo\Translatable\Mapping\Event\TranslatableAdapter;
  * @phpstan-type TranslatableConfiguration = array{
  *   fields?: string[],
  *   fallback?: array<string, bool>,
- *   locale?: string,
+ *   locale?: string|array{field: string, initialize: bool},
  *   translationClass?: class-string,
+ *   translationChangeSet?: string,
+ *   untranslated?: array<string, string>,
  *   useObjectClass?: class-string,
  * }
  *
@@ -134,6 +138,8 @@ class TranslatableListener extends MappedEventSubscriber
 
     /**
      * Tracks empty fields in default locale
+     *
+     * @var array<int, array<string, bool>>
      */
     private array $missingInDefaultLocale = [];
 
@@ -141,10 +147,7 @@ class TranslatableListener extends MappedEventSubscriber
      * Backup translation data to be restored post-flush when forcing
      * default-locale updates during flush.
      *
-     * @var array
-     *            ```
-     *            [ ROOT_CLASS_NAME => [ OID => [ FIELD => DATA, ... ], ... ], ... ],
-     *            ```
+     * @var array<class-string, array<int, array<string, mixed>>>
      */
     private array $preFlushBackup = [];
 
@@ -358,6 +361,12 @@ class TranslatableListener extends MappedEventSubscriber
 
     /**
      * Optionally tweak the configuration on a per object basis.
+     *
+     * @param object $object
+     *
+     * @return array<string, mixed>
+     *
+     * @phpstan-return TranslatableConfiguration
      */
     public function getObjectConfiguration($object, ObjectManager $objectManager, string $class)
     {
@@ -513,10 +522,13 @@ class TranslatableListener extends MappedEventSubscriber
     /**
      * Restore the translated properties previously backed up in the
      * preFlush() handler.
+     *
+     * @return void
      */
     public function postFlush(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
+        /** @var EntityManagerInterface|DocumentManager $om */
         $om = $ea->getObjectManager();
         $uow = $om->getUnitOfWork();
 
@@ -559,9 +571,10 @@ class TranslatableListener extends MappedEventSubscriber
             $oid = spl_object_id($object);
             if (array_key_exists($oid, $this->pendingTranslationInserts)) {
                 // load the pending translations without key
+                /** @var EntityWrapper<object>|MongoDocumentWrapper<object> $wrapped */
                 $wrapped = AbstractWrapper::wrap($object, $om);
                 $objectId = $wrapped->getIdentifier(false, true);
-                $translationClass = $this->getTranslationClass($ea, $meta->name);
+                $translationClass = $this->getTranslationClass($ea, $meta->getName());
                 foreach ($this->pendingTranslationInserts[$oid] as $translation) {
                     if ($ea->usesPersonalTranslation($translationClass)) {
                         $translation->setObject($objectId);
@@ -748,7 +761,7 @@ class TranslatableListener extends MappedEventSubscriber
      * @note Applications can derive from TranslatableListener and
      * override this method to their liking.
      */
-    protected function getFallbackUntranslation($translatedValue)
+    protected function getFallbackUntranslation($translatedValue) // @phpstan-ignore return.unusedType (Subclasses may return a translation.)
     {
         return null;
     }
@@ -777,6 +790,14 @@ class TranslatableListener extends MappedEventSubscriber
     /**
      * If requested install the original object property into the given PHP field.
      *
+     * @param object                    $object
+     * @param string                    $field
+     * @param mixed                     $originalValue
+     * @param ClassMetadata<object>     $meta
+     * @param TranslatableConfiguration $config
+     *
+     * @return void
+     *
      * @todo: perhaps easier and more efficient to use a database generated
      * column which simply duplicates the original value.
      */
@@ -786,7 +807,7 @@ class TranslatableListener extends MappedEventSubscriber
             $untranslatedProperty = $config['untranslated'][$field];
             $reflectionProperty = $meta->getReflectionClass()->getProperty($untranslatedProperty);
             if (!$reflectionProperty) {
-                throw new RuntimeException("There is no property ({$untranslatedProperty}) to hold the untranslated original value of property ({$field}) on object: {$meta->name}");
+                throw new RuntimeException("There is no property ({$untranslatedProperty}) to hold the untranslated original value of property ({$field}) on object: {$meta->getName()}");
             }
             if (PHP_VERSION_ID < 80100) {
                 $reflectionProperty->setAccessible(true);
@@ -801,6 +822,13 @@ class TranslatableListener extends MappedEventSubscriber
      * entity. This, however, make the original translated values unavailable
      * in the preUpdate handlers. So before doing any tweaks we just record
      * the changeset if this is requested by the OriginalValues annotation.
+     *
+     * @param object                    $object
+     * @param array<string, mixed>      $changeSet
+     * @param ClassMetadata<object>     $meta
+     * @param TranslatableConfiguration $config
+     *
+     * @return void
      */
     private function recordTranslationChangeSet($object, $changeSet, $meta, $config)
     {
@@ -808,7 +836,7 @@ class TranslatableListener extends MappedEventSubscriber
         if ($changeSetProperty = ($config['translationChangeSet'] ?? null)) {
             $reflectionProperty = $meta->getReflectionClass()->getProperty($changeSetProperty);
             if (!$reflectionProperty) {
-                throw new RuntimeException("There is no property ({$changeSetProperty}) to hold the original change-set of the translated fields for object: {$meta->name}");
+                throw new RuntimeException("There is no property ({$changeSetProperty}) to hold the original change-set of the translated fields for object: {$meta->getName()}");
             }
             $translationChangeSet = array_intersect_key($changeSet, array_flip($config['fields']));
             if (PHP_VERSION_ID < 80100) {
@@ -835,6 +863,7 @@ class TranslatableListener extends MappedEventSubscriber
     private function handleTranslatableObjectUpdate(TranslatableAdapter $ea, object $object, bool $isInsert): void
     {
         $om = $ea->getObjectManager();
+        /** @var EntityWrapper<object>|MongoDocumentWrapper<object> $wrapped */
         $wrapped = AbstractWrapper::wrap($object, $om);
         $meta = $wrapped->getMetadata();
         $config = $this->getObjectConfiguration($object, $om, $meta->getName());
@@ -936,6 +965,7 @@ class TranslatableListener extends MappedEventSubscriber
                 $content = $ea->getTranslationValue($object, $field);
                 $translation->setContent($content);
                 // check if need to update in database
+                /** @var EntityWrapper<object>|MongoDocumentWrapper<object> $transWrapper */
                 $transWrapper = AbstractWrapper::wrap($translation, $om);
                 if (((null === $content && !$isInsert) || is_bool($content) || is_int($content) || is_string($content) || !empty($content)) && ($isInsert || !$transWrapper->getIdentifier(false, true) || isset($changeSet[$field]))) {
                     if ($isInsert && !$objectId && !$ea->usesPersonalTranslation($translationClass)) {
@@ -1001,7 +1031,7 @@ class TranslatableListener extends MappedEventSubscriber
                 // recompute changeset only if there are changes other than reverted translations
                 if (!empty($modifiedChangeSet)
                     || $this->hasTranslationsInDefaultLocale($oid)
-                    || !empty($this->missingInDefaultLocale[$oid][$field])) {
+                    || !empty($this->missingInDefaultLocale[$oid])) {
                     foreach ($modifiedChangeSet as $field => $changes) {
                         $ea->setOriginalObjectProperty($uow, $object, $field, $changes[0]);
                     }
@@ -1069,14 +1099,16 @@ class TranslatableListener extends MappedEventSubscriber
 
     /**
      * Checks if the translation entity belongs to the object in question
+     *
+     * @param EntityWrapper<object>|MongoDocumentWrapper<object> $wrapped
      */
-    private function belongsToObject(TranslatableAdapter $ea, object $trans, WrapperInterface $wrapped): bool
+    private function belongsToObject(TranslatableAdapter $ea, object $trans, AbstractWrapper $wrapped): bool
     {
         if ($ea->usesPersonalTranslation(get_class($trans))) {
             return $trans->getObject() === $wrapped->getObject();
         }
 
         return $trans->getForeignKey() === $wrapped->getIdentifier(false, true)
-            && ($trans->getObjectClass() === $wrapped->getMetadata()->name);
+            && ($trans->getObjectClass() === $wrapped->getMetadata()->getName());
     }
 }
