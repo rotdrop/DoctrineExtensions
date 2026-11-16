@@ -40,7 +40,7 @@
         "docs": "https://github.com/doctrine-extensions/DoctrineExtensions/tree/main/doc"
     },
     "require": {
-        "php": "^7.4 || ^8.0",
+        "php": "^8.0",
         "doctrine/collections": "^1.2 || ^2.0 || ^3.1",
         "doctrine/deprecations": "^1.0",
         "doctrine/event-manager": "^1.2 || ^2.0",

@@ -20,6 +20,37 @@ parameters:
         - '#^Property Gedmo\\Tests\\.+\\Fixture\\[^:]+::\$\w+ (.*) is never assigned (.*) so it can be removed from the property type\.$#'
         - '#^Method Gedmo\\(?:[^\\]+\\)*Mapping\\Driver[^:]+::readExtendedMetadata\(\) with return type void returns [\w\|<>\s,]+ but should not return anything\.$#'
         - '#^Result of method Gedmo\\Mapping\\Driver::readExtendedMetadata\(\) \(void\) is used\.$#'
+        # Preserve PHP_VERSION_ID compatibility branches while analyzing PHP 8.0+.
+        -
+            identifier: greaterOrEqual.alwaysTrue
+            message: '#^Comparison operation ">=" between int<80000, [0-9]+> and 80000 is always true\.$#'
+        -
+            identifier: smaller.alwaysFalse
+            message: '#^Comparison operation "<" between int<80000, [0-9]+> and 80000 is always false\.$#'
+        -
+            identifier: booleanOr.alwaysTrue
+            path: tests/Gedmo/DoctrineExtensionsTest.php
+        -
+            identifier: booleanAnd.alwaysFalse
+            path: tests/Gedmo/Mapping/MetadataFactory/CustomDriverTest.php
+        -
+            identifier: booleanAnd.alwaysFalse
+            path: tests/Gedmo/Mapping/MetadataFactory/ForcedMetadataTest.php
+        -
+            identifier: booleanAnd.alwaysFalse
+            path: tests/Gedmo/Mapping/ExtensionMetadataFactoryReaderTest.php
+        -
+            identifier: deadCode.unreachable
+            path: tests/Gedmo/DoctrineExtensionsTest.php
+        -
+            identifier: deadCode.unreachable
+            path: tests/Gedmo/Tool/BaseTestCaseMongoODM.php
+        -
+            identifier: deadCode.unreachable
+            path: tests/Gedmo/Tool/BaseTestCaseOM.php
+        -
+            identifier: deadCode.unreachable
+            path: tests/Gedmo/Tool/BaseTestCaseORM.php
     excludePaths:
         # Deprecated and unused class, interface does not exist as of 4.0
         - src/Tool/Logging/DBAL/QueryAnalyzer.php
