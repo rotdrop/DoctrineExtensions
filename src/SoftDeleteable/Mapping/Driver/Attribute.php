@@ -109,7 +109,8 @@ ss implementing '.self::HARD_DELETEABLE_INTERFACE);
     }
 
     /**
-     * @param string $field
+     * @param ClassMetadata<object> $meta
+     * @param string                $field
      *
      * @return bool
      */
