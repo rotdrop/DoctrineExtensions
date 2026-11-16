@@ -28,23 +28,9 @@ jobs:
         deps:
           - "highest"
         no-annotations:
-          - false
+          - true
         orm:
-          - ""
-        include:
-          - deps: "lowest"
-            php-version: "8.5"
-          # Run builds on PHP 8.5 with `doctrine/annotations` removed
-          - deps: "highest"
-            php-version: "8.5"
-            no-annotations: true
-          # Run builds on high PHP version with `doctrine/orm` version pinned
-          - deps: "highest"
-            php-version: "8.5"
-            orm: "^2.14"
-          - deps: "highest"
-            php-version: "8.5"
-            orm: "^3.0"
+          - "~3.8.0"
 
     steps:
       - name: "Checkout"
