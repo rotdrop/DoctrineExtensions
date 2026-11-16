@@ -51,7 +51,8 @@ use function Symfony\Component\String\u;
  *   pathSeparator?: string,
  *   updatable: bool,
  *   unique: bool,
- *   unique_base: string,
+ *   unique_base: string|null,
+ *   uniqueInitialSuffix: bool,
  *   separator: string,
  *   prefix: string,
  *   suffix: string,
@@ -73,7 +74,7 @@ use function Symfony\Component\String\u;
  */
 class SluggableListener extends MappedEventSubscriber
 {
-    const PLACEHOLDER_SLUG = '__sluggable_placeholder__';
+    public const PLACEHOLDER_SLUG = '__sluggable_placeholder__';
 
     /**
      * The power exponent to jump
@@ -375,7 +376,7 @@ class SluggableListener extends MappedEventSubscriber
                 null === $slug // no slug yet
                 || 0 === strpos($slug, self::PLACEHOLDER_SLUG) // special id hack
                 || isset($changeSet[$slugField]) // slug was set manually
-                );
+            );
 
             $newSlug = [];
             foreach ($options['fields'] as $sluggableField) {
@@ -396,7 +397,7 @@ class SluggableListener extends MappedEventSubscriber
             // notify slug handlers --> onChangeDecision
             if ($hasHandlers) {
                 foreach ($options['handlers'] as $class => $handlerOptions) {
-                    $this->getHandler($class)->onChangeDecision($ea, $options, $object, $slug, $needToChangeSlug, [ 'old' => $oldSlug, 'new' => $newSlug ]);
+                    $this->getHandler($class)->onChangeDecision($ea, $options, $object, $slug, $needToChangeSlug, ['old' => $oldSlug, 'new' => $newSlug]);
                 }
             }
 

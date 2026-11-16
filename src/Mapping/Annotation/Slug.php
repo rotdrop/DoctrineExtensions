@@ -41,6 +41,7 @@ final class Slug implements GedmoAnnotation
     public bool $uniqueOverTranslations = false;
     /** @var string|null */
     public $unique_base;
+    /** @var bool */
     public $uniqueInitialSuffix = false;
     public string $separator = '-';
     public string $prefix = '';
