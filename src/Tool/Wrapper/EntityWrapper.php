@@ -11,8 +11,6 @@ namespace Gedmo\Tool\Wrapper;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
-use Doctrine\Persistence\Proxy as PersistenceProxy;
-use Doctrine\ORM\Utility\IdentifierFlattener;
 
 /**
  * Wraps entity or proxy for more convenient
@@ -34,11 +32,6 @@ class EntityWrapper extends AbstractWrapper
      * @var array<string, mixed>|null
      */
     private $identifier;
-
-    /**
-     * True if entity or proxy is loaded
-     */
-    private bool $initialized = false;
 
     /**
      * Wrap entity
@@ -77,9 +70,6 @@ class EntityWrapper extends AbstractWrapper
         return $this->meta->rootEntityName;
     }
 
-    /**
-     * @param bool $flatten
-     */
     public function getIdentifier($single = true, bool $flatten = false)
     {
         if (null === $this->identifier) {
@@ -104,11 +94,11 @@ class EntityWrapper extends AbstractWrapper
             if ($flatten) {
                 // "flatten" foreign keys
                 // compute the "hash", which in the current UOW is a simple implode, separated with spaces
-                return implode(' ', (array)$this->identifier);
+                return implode(' ', (array) $this->identifier);
             }
         }
 
-        return null;
+        return $this->identifier;
     }
 
     public function isEmbeddedAssociation($field)
@@ -136,9 +126,11 @@ class EntityWrapper extends AbstractWrapper
      * identifier values. If an invalid (i.e. empty) identifier value is
      * detected, then an empty array is returned.
      *
-     * @param mixed[] $id
+     * @param mixed[]                $id
+     * @param ClassMetadata<TObject> $class
      *
      * @return mixed[]
+     *
      * @psalm-return array<string, mixed>
      */
     private function flattenIdentifier(ClassMetadata $class, array $id): array
@@ -151,7 +143,7 @@ class EntityWrapper extends AbstractWrapper
         $unitOfWork = $this->om->getUnitOfWork();
         $metadataFactory = $this->om->getMetadataFactory();
         foreach ($class->identifier as $field) {
-            if (isset($class->associationMappings[$field]) && isset($id[$field])) {
+            if (isset($class->associationMappings[$field], $id[$field])) {
                 $targetEntity = $class->associationMappings[$field]['targetEntity'];
                 $fieldValue = $id[$field];
                 if (is_object($fieldValue) && $fieldValue instanceof $targetEntity) {
@@ -169,7 +161,7 @@ class EntityWrapper extends AbstractWrapper
                     $flatId[$field] = implode(' ', $associatedId);
                 } else {
                     // assume that then $id[$field] is the single identifier
-                    assert(count($class->associationMappings[$field]['joinColumns']) == 1);
+                    assert(1 == count($class->associationMappings[$field]['joinColumns']));
                     $flatId[$field] = $fieldValue;
                 }
             } elseif (isset($class->associationMappings[$field])) {
@@ -180,8 +172,8 @@ class EntityWrapper extends AbstractWrapper
                 }
 
                 $flatId[$field] = implode(' ', $associatedId);
-            } else if (isset($id[$field])) {
-                if ($id[$field] instanceof BackedEnum) {
+            } elseif (isset($id[$field])) {
+                if ($id[$field] instanceof \BackedEnum) {
                     $flatId[$field] = $id[$field]->value;
                 } else {
                     $flatId[$field] = $id[$field];
