@@ -41,8 +41,6 @@ final class Loggable implements GedmoAnnotation
 
     /**
      * @var bool
-     *
-     * @phpstan-var class-bool
      */
     public $enabled = true;
 
@@ -50,8 +48,6 @@ final class Loggable implements GedmoAnnotation
      * @param array<string, mixed> $data
      *
      * @phpstan-param class-string<T>|null $logEntryClass
-     *
-     * @phpstan-param class-bool $enabled
      */
     public function __construct(array $data = [], ?string $logEntryClass = null, bool $enabled = true)
     {

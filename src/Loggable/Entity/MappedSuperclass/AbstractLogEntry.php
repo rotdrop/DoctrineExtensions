@@ -51,11 +51,9 @@ abstract class AbstractLogEntry implements LogEntryInterface
      * @ORM\Column(name="object_id", length=64, nullable=true)
      */
     #[ORM\Column(name: 'object_id', length: 64, nullable: true)]
-    protected ?string $objectId;
+    protected ?string $objectId = null;
 
     /**
-     * @var string
-     *
      * @phpstan-var class-string<T>
      *
      * @ORM\Column(name="object_class", type="string", length=191)
@@ -77,13 +75,13 @@ abstract class AbstractLogEntry implements LogEntryInterface
      * NOTE: The attribute uses the "array" name directly instead of the constant since it was removed in DBAL 4.0.
      */
     #[ORM\Column(type: 'array', nullable: true)]
-    protected ?array $data;
+    protected ?array $data = null;
 
     /**
      * @ORM\Column(length=191, nullable=true)
      */
     #[ORM\Column(length: 191, nullable: true)]
-    protected ?string $username;
+    protected ?string $username = null;
 
     /**
      * Get id
