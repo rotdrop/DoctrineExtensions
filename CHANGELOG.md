@@ -19,6 +19,9 @@ a release.
 
 ## [Unreleased]
 
+### Changed
+- Tool: `WrapperInterface::getIdentifier()` implementations must accept the optional boolean `$flatten` argument.
+
 ## [3.22.2] - 2026-09-29
 ### Fixed
 - SoftDeleteable: Resolve the event manager listeners from the object manager to support `doctrine/persistence` >= 4.0 and

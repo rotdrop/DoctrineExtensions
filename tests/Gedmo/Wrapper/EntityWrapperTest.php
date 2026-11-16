@@ -154,6 +154,8 @@ final class EntityWrapperTest extends BaseTestCaseORM
         static::assertSame('test', $wrapped->getPropertyValue('title'));
 
         static::assertFalse($wrapped->hasValidIdentifier());
+        static::assertNull($wrapped->getIdentifier(false));
+        static::assertNull($wrapped->getIdentifier(false, true));
     }
 
     protected function getUsedEntityFixtures(): array
