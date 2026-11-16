@@ -541,12 +541,6 @@ parameters:
 			path: src/Timestampable/Mapping/Driver/Attribute.php
 
 		-
-			message: '#^Property Gedmo\\Mapping\\Annotation\\Timestampable\:\:\$field \(array\<string\>\|string\) in isset\(\) is not nullable\.$#'
-			identifier: isset.property
-			count: 1
-			path: src/Timestampable/Mapping/Driver/Attribute.php
-
-		-
 			message: '#^Call to an undefined method Doctrine\\Persistence\\Mapping\\ClassMetadata\<object\>\:\:getFieldMapping\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -1015,12 +1009,6 @@ parameters:
 			path: src/Uploadable/UploadableListener.php
 
 		-
-			message: '#^Class Doctrine\\ORM\\Mapping\\Driver\\AnnotationDriver not found\.$#'
-			identifier: class.notFound
-			count: 2
-			path: tests/Gedmo/DoctrineExtensionsTest.php
-
-		-
 			message: '#^Class Gedmo\\Tests\\Translatable\\Fixture\\CategoryTranslation not found\.$#'
 			identifier: class.notFound
 			count: 1
@@ -1223,30 +1211,6 @@ parameters:
 			identifier: function.impossibleType
 			count: 2
 			path: tests/Gedmo/Timestampable/TimestampableTest.php
-
-		-
-			message: '#^Instantiated class Doctrine\\ORM\\Mapping\\Driver\\AnnotationDriver not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: tests/Gedmo/Tool/BaseTestCaseOM.php
-
-		-
-			message: '#^Method Gedmo\\Tests\\Tool\\BaseTestCaseOM\:\:getORMDriver\(\) should return Doctrine\\Persistence\\Mapping\\Driver\\MappingDriver but returns Doctrine\\ORM\\Mapping\\Driver\\AnnotationDriver\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Gedmo/Tool/BaseTestCaseOM.php
-
-		-
-			message: '#^Instantiated class Doctrine\\ORM\\Mapping\\Driver\\AnnotationDriver not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: tests/Gedmo/Tool/BaseTestCaseORM.php
-
-		-
-			message: '#^Method Gedmo\\Tests\\Tool\\BaseTestCaseORM\:\:getMetadataDriverImplementation\(\) should return Doctrine\\Persistence\\Mapping\\Driver\\MappingDriver but returns Doctrine\\ORM\\Mapping\\Driver\\AnnotationDriver\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Gedmo/Tool/BaseTestCaseORM.php
 
 		-
 			message: '#^Property Gedmo\\Tests\\Tree\\MaterializedPathODMMongoDBRepositoryTest\:\:\$repo \(Gedmo\\Tree\\Document\\MongoDB\\Repository\\MaterializedPathRepository\<Gedmo\\Tests\\Tree\\Fixture\\Document\\Category\>\) does not accept Doctrine\\ORM\\EntityRepository\<Gedmo\\Tests\\Tree\\Fixture\\Document\\Category\>\.$#'
