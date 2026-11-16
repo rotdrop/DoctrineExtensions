@@ -46,13 +46,14 @@ final class TimestampableMappingTest extends BaseTestCaseORM
         $config = $this->timestampable->getConfiguration($this->em, $meta->getName());
 
         static::assertArrayHasKey('create', $config);
-        static::assertSame('created', $config['create'][0]);
+        static::assertSame(['field' => 'created', 'targetProperty' => null], $config['create'][0]);
         static::assertArrayHasKey('update', $config);
-        static::assertSame('updated', $config['update'][0]);
+        static::assertSame(['field' => 'updated', 'targetProperty' => null], $config['update'][0]);
         static::assertArrayHasKey('change', $config);
         $onChange = $config['change'][0];
 
         static::assertSame('published', $onChange['field']);
+        static::assertNull($onChange['targetProperty']);
         static::assertSame('status.title', $onChange['trackedField']);
         static::assertSame('Published', $onChange['value']);
     }

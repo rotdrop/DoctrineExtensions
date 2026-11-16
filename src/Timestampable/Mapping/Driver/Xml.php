@@ -73,19 +73,20 @@ class Xml extends BaseXml
                         throw new InvalidMappingException("Field - [{$field}] trigger 'on' is not one of [update, create, change] in class - {$meta->getName()}");
                     }
 
+                    $options = [
+                        'field' => $field,
+                        'targetProperty' => null,
+                    ];
                     if ('change' === $this->_getAttribute($data, 'on')) {
                         if (!$this->_isAttributeSet($data, 'field')) {
                             throw new InvalidMappingException("Missing parameters on property - {$field}, field must be set on [change] trigger in class - {$meta->getName()}");
                         }
                         $trackedFieldAttribute = $this->_getAttribute($data, 'field');
                         $valueAttribute = $this->_isAttributeSet($data, 'value') ? $this->_getAttribute($data, 'value') : null;
-                        $field = [
-                            'field' => $field,
-                            'trackedField' => $trackedFieldAttribute,
-                            'value' => $valueAttribute,
-                        ];
+                        $options['trackedField'] = $trackedFieldAttribute;
+                        $options['value'] = $valueAttribute;
                     }
-                    $config[$this->_getAttribute($data, 'on')][] = $field;
+                    $config[$this->_getAttribute($data, 'on')][] = $options;
                 }
             }
         }

@@ -71,18 +71,18 @@ class Attribute extends AbstractAnnotationDriver
                     throw new InvalidMappingException("Unable to find timestampable [{$field}] as mapped property in entity - {$meta->getName()}");
                 }
 
-                if ((!$meta->hasAssociation($field) ||
-                     empty($timestampable->timestampField)) &&
-                    !$this->isValidField($meta, $field)) {
+                if ((!$meta->hasAssociation($field)
+                     || empty($timestampable->timestampField))
+                    && !$this->isValidField($meta, $field)) {
                     throw new InvalidMappingException("Field - [{$field}] type is not valid and must be 'date', 'datetime' or 'time' in class - {$meta->getName()}");
                 }
 
-                $triggers = is_array($timestampable->on) ? $timestampable->on : [ $timestampable->on ];
+                $triggers = is_array($timestampable->on) ? $timestampable->on : [$timestampable->on];
                 foreach ($triggers as $on) {
                     if (!in_array($on, ['update', 'create', 'change', 'delete'], true)) {
                         throw new InvalidMappingException("Field - [{$field}] trigger 'on' is not one of [update, create, change, delete] in class - {$meta->getName()}");
                     }
-                    if ($on === 'delete') {
+                    if ('delete' === $on) {
                         if (!$meta->hasAssociation($field)) {
                             throw new InvalidMappingException("Field - [{$field}] trigger 'on' is 'delete', but [{$field}] is not an association in class - {$meta->getName()}");
                         }
@@ -101,7 +101,7 @@ class Attribute extends AbstractAnnotationDriver
                         if (is_array($timestampable->field) && isset($timestampable->value)) {
                             throw new InvalidMappingException('Timestampable extension does not support multiple value changeset detection yet.');
                         }
-                        if (!$meta->isSingleValuedAssociation($field) && isset($timestampable->value)) {
+                        if ($meta->hasAssociation($field) && !$meta->isSingleValuedAssociation($field) && isset($timestampable->value)) {
                             throw new InvalidMappingException('Timestampable extension does not support changeset detection for multi-valued association fields.');
                         }
                         $options['trackedField'] = $timestampable->field;
