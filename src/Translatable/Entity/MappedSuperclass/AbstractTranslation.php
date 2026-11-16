@@ -58,7 +58,7 @@ abstract class AbstractTranslation
      * @ORM\Column(type="text", nullable=true)
      */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    protected ?string $content;
+    protected ?string $content = null;
 
     /**
      * Get id

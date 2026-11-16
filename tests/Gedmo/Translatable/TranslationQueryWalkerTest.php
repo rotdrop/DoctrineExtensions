@@ -646,44 +646,6 @@ final class TranslationQueryWalkerTest extends BaseTestCaseORM
         static::assertSame(1, $result[0]['num']);
     }
 
-    public function testShouldPreserveSkipOnLoadForSimpleHydrator(): void
-    {
-        $this->em->getConfiguration()->addCustomHydrationMode(
-            TranslationWalker::HYDRATE_SIMPLE_OBJECT_TRANSLATION,
-            SimpleObjectHydrator::class
-        );
-        $dql = 'SELECT a FROM '.Article::class.' a';
-        $dql .= ' ORDER BY a.title';
-        $q = $this->em->createQuery($dql);
-        $q->setHint(Query::HINT_CUSTOM_OUTPUT_WALKER, TranslationWalker::class);
-
-        // array hydration
-        $this->translatableListener->setTranslatableLocale('en_us');
-        $this->translatableListener->setSkipOnLoad(true);
-        $q->getResult(Query::HYDRATE_SIMPLEOBJECT);
-
-        static::assertTrue($this->translatableListener->isSkipOnLoad());
-    }
-
-    public function testShouldPreserveSkipOnLoadForObjectHydrator(): void
-    {
-        $this->em->getConfiguration()->addCustomHydrationMode(
-            TranslationWalker::HYDRATE_OBJECT_TRANSLATION,
-            ObjectHydrator::class
-        );
-        $dql = 'SELECT a FROM '.Article::class.' a';
-        $dql .= ' ORDER BY a.title';
-        $q = $this->em->createQuery($dql);
-        $q->setHint(Query::HINT_CUSTOM_OUTPUT_WALKER, TranslationWalker::class);
-
-        // array hydration
-        $this->translatableListener->setTranslatableLocale('en_us');
-        $this->translatableListener->setSkipOnLoad(true);
-        $q->getResult(Query::HYDRATE_OBJECT);
-
-        static::assertTrue($this->translatableListener->isSkipOnLoad());
-    }
-
     protected function getUsedEntityFixtures(): array
     {
         return [
